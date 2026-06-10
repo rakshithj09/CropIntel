@@ -84,35 +84,73 @@ def validate_image_quality(image: Image.Image):
     }
 
 
-def build_farmer_verification(result: dict, quality_metrics: dict) -> dict:
+def _softmax_entropy(probs) -> float:
+    """Normalized entropy in [0,1]; ~1 means the model spreads probability evenly
+    across classes (doesn't recognize any one disease) — an out-of-catalog signal."""
+    p = np.asarray([max(float(x), 1e-12) for x in probs], dtype=np.float64)
+    p = p / p.sum()
+    ent = -np.sum(p * np.log(p))
+    max_ent = np.log(len(p)) if len(p) > 1 else 1.0
+    return float(ent / max_ent) if max_ent > 0 else 0.0
+
+
+def build_farmer_verification(result: dict, quality_metrics: dict,
+                              crop: str = "", known_diseases=None) -> dict:
     """
     Build a farmer-facing trust summary for the diagnosis.
+
+    Adds an explicit "not in our catalog" state: when the image is a usable leaf
+    photo but the model cannot confidently match ANY known disease (low top-1
+    confidence and/or a near-uniform probability spread), we say so instead of
+    forcing a misleading label.
     """
+    known_diseases = known_diseases or []
     all_predictions = result.get("all_predictions", [])
     top1 = all_predictions[0]["confidence"] if len(all_predictions) > 0 else 0.0
     top2 = all_predictions[1]["confidence"] if len(all_predictions) > 1 else 0.0
     confidence_margin = float(top1 - top2)
     meets_threshold = bool(result.get("meets_threshold", False))
+    quality_ok = bool(quality_metrics.get("image_quality_ok", False))
 
-    # Verification logic:
-    # - verified: model confidence passes threshold and clearly beats runner-up
-    # - uncertain: low confidence or ambiguous class separation
-    if meets_threshold and confidence_margin >= 0.15:
-        status = "verified"
-        recommendation = "Diagnosis is likely reliable. Start treatment for this disease and monitor daily."
-    elif quality_metrics.get("image_quality_ok", False):
-        status = "uncertain"
-        recommendation = (
-            "Diagnosis is uncertain. Capture 2-3 more close-up leaf photos and compare top labels before treatment."
-        )
-    else:
+    entropy = _softmax_entropy([p["confidence"] for p in all_predictions])
+    disease_list = ", ".join(d for d in known_diseases if d.lower() != "healthy")
+
+    not_in_catalog = False
+    catalog_message = ""
+
+    if not quality_ok:
         status = "retake"
         recommendation = "Retake the photo in good lighting with one leaf filling most of the frame."
+    elif meets_threshold and confidence_margin >= 0.15:
+        status = "verified"
+        recommendation = "Diagnosis is likely reliable. Start treatment for this disease and monitor daily."
+    elif meets_threshold and confidence_margin < 0.15:
+        # Confident-ish, but the top two known classes are close together.
+        second = all_predictions[1]["disease"] if len(all_predictions) > 1 else ""
+        status = "uncertain"
+        recommendation = (
+            f"The top two labels are close ({all_predictions[0]['disease']} vs {second}). "
+            "Capture 2-3 more close-up leaf photos and compare before treating."
+        )
+    else:
+        # Usable leaf photo, but no known disease scores confidently → likely a
+        # disease outside our catalog (or healthy / very early / atypical).
+        status = "unknown"
+        not_in_catalog = True
+        catalog_message = (
+            f"This leaf doesn't clearly match any {crop or 'crop'} condition we currently detect"
+            + (f" ({disease_list})" if disease_list else "")
+            + ". It may be a disease we don't cover yet, a healthy leaf, or an early/atypical "
+            "case. Treat the top guess with caution and consider an agricultural expert."
+        )
+        recommendation = catalog_message
 
     return {
         "status": status,
         "confidence_margin": round(confidence_margin * 100, 2),
-        "image_quality_ok": bool(quality_metrics.get("image_quality_ok", False)),
+        "image_quality_ok": quality_ok,
+        "entropy": round(entropy, 3),
+        "not_in_catalog": not_in_catalog,
         "recommendation": recommendation,
     }
 
@@ -137,11 +175,14 @@ def main():
         
         # Get predictor
         predictor = TFLitePredictor(crop=crop)
-        
+
         # Make prediction
         result = predictor.predict(image)
-        farmer_verification = build_farmer_verification(result, quality_metrics)
-        
+        known_diseases = list(getattr(predictor, "class_names", []))
+        farmer_verification = build_farmer_verification(
+            result, quality_metrics, crop=crop, known_diseases=known_diseases
+        )
+
         # Format response
         response = {
             "success": True,
@@ -150,6 +191,9 @@ def main():
             "confidence": round(result["confidence"] * 100, 2),
             "is_healthy": result["is_healthy"],
             "meets_threshold": result["meets_threshold"],
+            "not_in_catalog": farmer_verification["not_in_catalog"],
+            "catalog_message": farmer_verification["recommendation"] if farmer_verification["not_in_catalog"] else "",
+            "known_diseases": known_diseases,
             "farmer_verification": farmer_verification,
             "image_quality": quality_metrics,
             "all_predictions": [

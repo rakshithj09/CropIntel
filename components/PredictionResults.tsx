@@ -7,6 +7,10 @@ interface Prediction {
   confidence: number
   is_healthy: boolean
   meets_threshold: boolean
+  /** True when the model can't confidently match any disease in our catalog. */
+  not_in_catalog?: boolean
+  /** Farmer-facing explanation shown when not_in_catalog is true. */
+  catalog_message?: string
   all_predictions: Array<{
     disease: string
     confidence: number
@@ -30,6 +34,9 @@ export default function PredictionResults({
   regionNote,
 }: PredictionResultsProps) {
   const getStatusColor = () => {
+    if (prediction.not_in_catalog) {
+      return 'bg-amber-50 text-amber-900 border-amber-200'
+    }
     if (prediction.is_healthy) {
       return 'bg-emerald-50 text-emerald-900 border-emerald-200'
     }
@@ -40,6 +47,9 @@ export default function PredictionResults({
   }
 
   const getStatusText = () => {
+    if (prediction.not_in_catalog) {
+      return 'No match in catalog'
+    }
     if (prediction.is_healthy) {
       return 'Healthy'
     }
@@ -96,6 +106,22 @@ export default function PredictionResults({
           {getStatusText()}
         </div>
       </div>
+
+      {/* Not-in-catalog notice: model couldn't confidently match any known disease */}
+      {prediction.not_in_catalog && (
+        <div className="rounded-xl p-4 mb-6 border border-amber-200 bg-amber-50 text-amber-900">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-sm">This may not be a disease we detect</p>
+              <p className="text-sm mt-1 leading-snug">
+                {prediction.catalog_message ||
+                  "The image doesn't clearly match any disease in our catalog for this crop. The labels below are the closest guesses, shown for reference only — treat with caution and consider an agricultural expert."}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* All Predictions */}
       <div>

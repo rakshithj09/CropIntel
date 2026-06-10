@@ -193,7 +193,11 @@ export async function POST(request: NextRequest) {
 function runPrediction(imagePath: string, crop: string): Promise<any> {
   return new Promise((resolve, reject) => {
     const scriptPath = join(process.cwd(), 'scripts', 'predict.py')
-    const pythonProcess = spawn('python3', [scriptPath, imagePath, crop])
+    // Use the interpreter that has TensorFlow installed. The default `python3`
+    // on this machine is a venv without TF; set CROPINTEL_PYTHON to the conda
+    // env (e.g. .conda-py311/bin/python) so inference works.
+    const pythonBin = process.env.CROPINTEL_PYTHON || 'python3'
+    const pythonProcess = spawn(pythonBin, [scriptPath, imagePath, crop])
 
     let stdout = ''
     let stderr = ''
