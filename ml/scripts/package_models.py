@@ -2,7 +2,17 @@
 """
 Zip ml/models/ for sharing (GitHub Release, Drive, etc.).
 
-  python -m ml.scripts.package_models -o ~/Desktop/cropintel-models.zip
+By default this now packages only the LATEST version per crop (not every
+historical training run), which keeps release archives small.
+
+  # latest version per crop, all files (default):
+  python -m ml.scripts.package_models -o cropintel-models.zip
+
+  # production/mobile: only the .tflite + label_map.json of the latest version:
+  python -m ml.scripts.package_models --tflite-only -o cropintel-models-mobile.zip
+
+  # everything, every version (the old behaviour):
+  python -m ml.scripts.package_models --all-versions -o cropintel-models-full.zip
 """
 import argparse
 import zipfile
@@ -10,16 +20,23 @@ from pathlib import Path
 
 from ml.config import CROPS, MODELS_DIR
 
+# Version dirs look like v1_YYYYMMDD_HHMMSS — sort lexically == chronological.
+def _latest_version_dir(crop_dir: Path):
+    versions = sorted(
+        [d for d in crop_dir.iterdir() if d.is_dir() and d.name.startswith("v")],
+        key=lambda p: p.stat().st_mtime,
+    )
+    return versions[-1] if versions else None
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Zip trained models for release.")
-    parser.add_argument(
-        "-o",
-        "--output",
-        type=Path,
-        default=Path("cropintel-models.zip"),
-        help="Output .zip path",
-    )
+    parser.add_argument("-o", "--output", type=Path, default=Path("cropintel-models.zip"),
+                        help="Output .zip path")
+    parser.add_argument("--all-versions", action="store_true",
+                        help="Include every version per crop (large). Default: latest only.")
+    parser.add_argument("--tflite-only", action="store_true",
+                        help="Include only model.tflite + label_map.json (smallest, mobile).")
     args = parser.parse_args()
 
     if not MODELS_DIR.is_dir():
@@ -29,15 +46,32 @@ def main() -> None:
     if missing:
         print(f"Warning: no folder for crops: {missing}")
 
+    keep_names = {"model.tflite", "label_map.json"}
     args.output.parent.mkdir(parents=True, exist_ok=True)
+    n_files = 0
     with zipfile.ZipFile(args.output, "w", zipfile.ZIP_DEFLATED) as zf:
-        for crop_dir in MODELS_DIR.iterdir():
-            if not crop_dir.is_dir() or crop_dir.name not in CROPS:
+        for crop in CROPS:
+            crop_dir = MODELS_DIR / crop
+            if not crop_dir.is_dir():
                 continue
-            for path in crop_dir.rglob("*"):
-                if path.is_file():
+            if args.all_versions:
+                version_dirs = [d for d in crop_dir.iterdir() if d.is_dir()]
+            else:
+                latest = _latest_version_dir(crop_dir)
+                version_dirs = [latest] if latest else []
+            for vdir in version_dirs:
+                for path in vdir.rglob("*"):
+                    if not path.is_file():
+                        continue
+                    if args.tflite_only and path.name not in keep_names:
+                        continue
                     zf.write(path, path.relative_to(MODELS_DIR))
-    print(f"Wrote {args.output.resolve()}")
+                    n_files += 1
+            if version_dirs:
+                print(f"  {crop}: packaged {version_dirs[-1].name if version_dirs else '-'}")
+
+    size_mb = args.output.stat().st_size / (1024 ** 2)
+    print(f"Wrote {args.output.resolve()} ({n_files} files, {size_mb:.1f} MB)")
 
 
 if __name__ == "__main__":

@@ -16,7 +16,11 @@ def _is_complete_model_version(crop_dir: Path, version_name: str) -> bool:
     vd = crop_dir / version_name
     if not vd.is_dir():
         return False
-    has_weights = (vd / "model.tflite").exists() or (vd / "checkpoint.keras").exists()
+    has_weights = (
+        (vd / "model.tflite").exists()
+        or (vd / "checkpoint.keras").exists()
+        or (vd / "model.onnx").exists()
+    )
     has_labels = (vd / "metadata.json").exists() or (vd / "label_map.json").exists()
     return has_weights and has_labels
 
@@ -25,11 +29,15 @@ def _version_rank(crop_dir: Path, version_name: str) -> tuple:
     """
     Prefer fully finished exports (TFLite + evaluated metrics), then lexical version id
     (timestamp suffix) so incomplete re-runs do not beat a good checkpoint.
+    ONNX pretrained models rank below trained TFLite/Keras models but above incomplete runs.
     """
     vd = crop_dir / version_name
-    has_tflite = (vd / "model.tflite").exists()
+    has_tflite  = (vd / "model.tflite").exists()
     has_metrics = (vd / "metrics.json").exists()
-    return (has_tflite, has_metrics, version_name)
+    has_onnx    = (vd / "model.onnx").exists()
+    # (has_tflite, has_metrics, has_onnx, version_name)
+    # Fully trained TFLite+metrics > trained TFLite > pretrained ONNX > bare checkpoint
+    return (has_tflite and has_metrics, has_tflite, has_onnx, version_name)
 
 
 def _iter_usable_versions(crop_dir: Path) -> list[str]:
@@ -77,11 +85,7 @@ class TFLitePredictor:
         
         if keras_path.exists():
             # Use Keras model (more accurate, includes preprocessing layer)
-            from ml.utils.model_builder import efficientnet_preprocess
-            self.model = tf.keras.models.load_model(
-                keras_path,
-                custom_objects={'efficientnet_preprocess': efficientnet_preprocess}
-            )
+            self.model = tf.keras.models.load_model(keras_path)
             self.use_keras = True
         elif tflite_path.exists():
             # Fallback to TFLite model
@@ -120,8 +124,8 @@ class TFLitePredictor:
     def preprocess_image(self, image: Image.Image) -> np.ndarray:
         """
         Preprocess image for inference.
-        For Keras models: normalize to [0, 1] (preprocessing layer handles conversion)
-        For TFLite models: apply EfficientNet preprocessing [0, 255] -> [-1, 1]
+        Both Keras and TFLite exports include the same in-model rescaling layer,
+        so inputs should stay normalized to [0, 1].
         
         Args:
             image: PIL Image
@@ -136,17 +140,8 @@ class TFLitePredictor:
         # Resize to model input size
         image = image.resize(self.input_shape[:2])
         
-        # Convert to array
-        img_array = np.array(image, dtype=np.float32)
-        
-        if self.use_keras:
-            # Keras model preprocessing layer expects [0, 255] range
-            # It will convert to [-1, 1] internally
-            # Keep img_array in [0, 255] range
-            pass  # img_array is already in [0, 255] range
-        else:
-            # TFLite model needs manual preprocessing: [0, 255] -> [-1, 1]
-            img_array = (img_array / 127.5) - 1.0
+        # Convert to array and normalize to [0, 1].
+        img_array = np.array(image, dtype=np.float32) / 255.0
         
         # Expand dimensions for batch
         img_array = np.expand_dims(img_array, axis=0)

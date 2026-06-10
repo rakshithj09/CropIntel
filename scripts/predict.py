@@ -3,6 +3,12 @@
 Prediction script for CropIntel API.
 Called by Next.js API route to make predictions.
 """
+import os
+# Suppress TensorFlow C++ and Python logs before any TF import.
+# Without this, TF warnings pollute stderr and break JSON parsing in the API route.
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+
 import sys
 import json
 from pathlib import Path
@@ -13,6 +19,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from PIL import Image
 from ml.inference.tflite_predictor import TFLitePredictor
+import tensorflow as tf
+tf.get_logger().setLevel('ERROR')
 
 
 def validate_image_quality(image: Image.Image):

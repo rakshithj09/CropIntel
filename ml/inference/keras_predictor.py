@@ -10,7 +10,7 @@ import tensorflow as tf
 from PIL import Image
 
 from ml.config import MODELS_DIR, CONFIDENCE_THRESHOLD, CROPS
-from ml.utils.model_builder import efficientnet_preprocess
+from ml.inference.tflite_predictor import _iter_usable_versions, _version_rank
 
 
 class KerasPredictor:
@@ -30,12 +30,14 @@ class KerasPredictor:
         self.crop = crop
         self.model_dir = MODELS_DIR / crop
         
-        # Find model version
+        # Find model version — same completeness ranking as TFLitePredictor
         if version:
             self.version = version
         else:
-            # Get latest version
-            versions = sorted([d.name for d in self.model_dir.iterdir() if d.is_dir()])
+            versions = sorted(
+                _iter_usable_versions(self.model_dir),
+                key=lambda n: _version_rank(self.model_dir, n),
+            )
             if not versions:
                 raise ValueError(f"No trained models found for {crop}")
             self.version = versions[-1]
@@ -45,10 +47,7 @@ class KerasPredictor:
         if not keras_path.exists():
             raise FileNotFoundError(f"Keras model not found: {keras_path}")
         
-        self.model = tf.keras.models.load_model(
-            keras_path,
-            custom_objects={'efficientnet_preprocess': efficientnet_preprocess}
-        )
+        self.model = tf.keras.models.load_model(keras_path)
         
         # Load metadata
         metadata_path = self.model_dir / self.version / "metadata.json"
@@ -74,7 +73,7 @@ class KerasPredictor:
     def preprocess_image(self, image: Image.Image) -> np.ndarray:
         """
         Preprocess image for inference.
-        The Keras model includes the preprocessing layer, so we normalize to [0, 1].
+        The Keras model includes the preprocessing layer, so inputs stay in [0, 1].
         
         Args:
             image: PIL Image
@@ -89,8 +88,7 @@ class KerasPredictor:
         # Resize to model input size
         image = image.resize(self.input_shape[:2])
         
-        # Convert to array and normalize to [0, 1]
-        # The preprocessing layer in the model will convert this to [-1, 1]
+        # Convert to array and normalize to [0, 1].
         img_array = np.array(image, dtype=np.float32) / 255.0
         
         # Expand dimensions for batch

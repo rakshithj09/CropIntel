@@ -17,7 +17,7 @@ from ml.config import (
     MODELS_DIR, TRAINING_CONFIG, MODEL_VERSION_FORMAT, CROPS, MODEL_CONFIG
 )
 from ml.utils.data_loader import CropDatasetLoader
-from ml.utils.model_builder import build_model, unfreeze_model, efficientnet_preprocess
+from ml.utils.model_builder import build_model, unfreeze_model
 from ml.utils.evaluation import evaluate_model
 from ml.utils.tflite_converter import convert_to_tflite
 
@@ -27,6 +27,9 @@ def train_crop_model(
     epochs: int = None,
     fine_tune: bool = True,
     from_scratch: bool = False,
+    architecture: str = "EfficientNetB0",
+    phase2_lr: float = 1e-4,
+    batch_size: int = None,
 ):
     """
     Train a disease classification model for a specific crop.
@@ -40,9 +43,15 @@ def train_crop_model(
     """
     if crop not in CROPS:
         raise ValueError(f"Unknown crop: {crop}")
+
+    # Allow caller to override batch size (e.g. to recover from OOM)
+    _orig_batch = TRAINING_CONFIG["batch_size"]
+    if batch_size is not None:
+        TRAINING_CONFIG["batch_size"] = batch_size
     
     print(f"\n{'='*60}")
     print(f"Training {crop.upper()} Disease Classification Model")
+    print(f"Architecture: {architecture}")
     if from_scratch:
         print("(backbone: random init — no ImageNet weights)")
     print(f"{'='*60}\n")
@@ -62,17 +71,17 @@ def train_crop_model(
     print("Creating data generators...")
     train_gen, val_gen, y_train = loader.create_data_generators(images, labels)
     
-    # Calculate class weights to handle imbalance (using training set)
-    # Using 'balanced' but capping extreme weights to prevent instability
+    # Calculate class weights to handle imbalance (using training set).
+    # A wider cap gives minority classes enough signal without letting a single
+    # small class dominate training.
     train_class_weights = compute_class_weight(
         'balanced',
         classes=np.unique(y_train),
         y=y_train
     )
-    # Cap weights at 2.0 to prevent extreme weighting that causes instability
-    train_class_weights = np.clip(train_class_weights, 0.5, 2.0)
+    train_class_weights = np.clip(train_class_weights, 0.3, 5.0)
     train_class_weight_dict = {i: weight for i, weight in enumerate(train_class_weights)}
-    print(f"\nClass weights for training (capped at 2.0): {dict(zip(class_names, train_class_weights))}")
+    print(f"\nClass weights for training (capped at 5.0): {dict(zip(class_names, train_class_weights))}")
     
     # Build model
     print("Building model...")
@@ -80,6 +89,7 @@ def train_crop_model(
         num_classes=len(class_names),
         crop=crop,
         from_scratch=from_scratch,
+        architecture=architecture,
     )
     
     # Callbacks - using .keras format for better custom function handling
@@ -87,13 +97,13 @@ def train_crop_model(
     callbacks = [
         ModelCheckpoint(
             checkpoint_path,
-            monitor='val_accuracy',
+            monitor='val_loss',
             save_best_only=True,
             save_weights_only=False,
             verbose=1
         ),
         EarlyStopping(
-            monitor='val_accuracy',
+            monitor='val_loss',
             patience=20,
             restore_best_weights=True,
             verbose=1,
@@ -114,7 +124,10 @@ def train_crop_model(
         print("\nPhase 1: Training full model from random initialization...")
     else:
         print("\nPhase 1: Training with frozen base model...")
-    epochs_phase1 = (epochs or TRAINING_CONFIG["epochs"]) // 2
+    total_epochs = epochs or TRAINING_CONFIG["epochs"]
+    # Phase 1 is just a warm-up for the classifier head; keep it short so the
+    # head doesn't overfit frozen-backbone features before Phase 2 fine-tuning.
+    epochs_phase1 = max(1, int(total_epochs * 0.2))
     
     history1 = model.fit(
         train_gen,
@@ -127,34 +140,51 @@ def train_crop_model(
     
     # Fine-tuning: partial unfreeze (pretrained) or lower LR on full model (from scratch)
     if fine_tune:
+        # Phase 2 uses fixed LR — no ReduceLROnPlateau so the optimizer can't
+        # collapse to a near-zero LR before the backbone has had time to adapt.
+        callbacks_phase2 = [
+            ModelCheckpoint(
+                checkpoint_path,
+                monitor='val_loss',
+                save_best_only=True,
+                save_weights_only=False,
+                verbose=1
+            ),
+            EarlyStopping(
+                monitor='val_loss',
+                patience=20,
+                restore_best_weights=True,
+                verbose=1,
+                min_delta=0.001
+            ),
+            CSVLogger(model_dir / "training_log.csv", append=True)
+        ]
+
         if from_scratch:
             print("\nPhase 2: Lower learning rate (full model)...")
             model.compile(
                 optimizer=tf.keras.optimizers.Adam(learning_rate=1e-5),
-                loss=tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.05),
+                loss=tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.1),
                 metrics=["accuracy"],
             )
         else:
             print("\nPhase 2: Fine-tuning top layers...")
-            model = unfreeze_model(model, fine_tune_at=100)
-        
-        epochs_phase2 = (epochs or TRAINING_CONFIG["epochs"]) - epochs_phase1
-        
+            model = unfreeze_model(model, fine_tune_at=50, lr=phase2_lr)
+
+        epochs_phase2 = total_epochs - epochs_phase1
+
         history2 = model.fit(
             train_gen,
             epochs=epochs_phase2,
             validation_data=val_gen,
-            callbacks=callbacks,
+            callbacks=callbacks_phase2,
             class_weight=train_class_weight_dict,
             verbose=1
         )
     
     # Load best model with custom objects for custom preprocessing function
     print("\nLoading best model checkpoint...")
-    model = tf.keras.models.load_model(
-        checkpoint_path,
-        custom_objects={'efficientnet_preprocess': efficientnet_preprocess}
-    )
+    model = tf.keras.models.load_model(checkpoint_path)
     
     # Evaluate on test set
     print("\nEvaluating on test set...")
@@ -173,6 +203,29 @@ def train_crop_model(
     tflite_path = convert_to_tflite(
         model, crop, version, class_names, representative_data
     )
+
+    # Item 12: verify the .tflite actually loads and runs one inference.
+    try:
+        interpreter = tf.lite.Interpreter(model_path=str(tflite_path))
+        interpreter.allocate_tensors()
+        in_det = interpreter.get_input_details()[0]
+        out_det = interpreter.get_output_details()[0]
+        sample = X_test[:1].astype(in_det["dtype"])
+        interpreter.set_tensor(in_det["index"], sample)
+        interpreter.invoke()
+        tflite_out = interpreter.get_tensor(out_det["index"])
+        assert tflite_out.shape[-1] == len(class_names), (
+            f"TFLite output classes {tflite_out.shape[-1]} != {len(class_names)}")
+        metrics["tflite_verified"] = True
+        print(f"  [TFLITE OK] {tflite_path} runs; output shape={tflite_out.shape}, "
+              f"pred={class_names[int(np.argmax(tflite_out))]}")
+    except Exception as e:
+        metrics["tflite_verified"] = False
+        print(f"  [TFLITE FAIL] could not load/run {tflite_path}: {e}")
+    # Persist the updated metrics (now including tflite_verified) so the summary
+    # and downstream tooling see the verification result.
+    with open(model_dir / "metrics.json", "w") as f:
+        json.dump(metrics, f, indent=2)
     
     # Save label mapping
     label_map = {i: name for i, name in enumerate(class_names)}
@@ -189,7 +242,7 @@ def train_crop_model(
         "image_size": list(TRAINING_CONFIG["image_size"]),
         "num_classes": len(class_names),
         "class_names": class_names,
-        "model_architecture": MODEL_CONFIG["base_model"],
+        "model_architecture": architecture,
         "fine_tuned": fine_tune,
         "from_scratch": from_scratch,
         "backbone_weights": None if from_scratch else MODEL_CONFIG["weights"],
@@ -202,7 +255,10 @@ def train_crop_model(
     print(f"\n{'='*60}")
     print(f"Training complete! Model saved to: {model_dir}")
     print(f"{'='*60}\n")
-    
+
+    # Restore original batch size if it was overridden
+    TRAINING_CONFIG["batch_size"] = _orig_batch
+
     return model_dir
 
 
