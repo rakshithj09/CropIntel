@@ -1,0 +1,5 @@
+# Extra dependency for the local model-compare tool (ml/serve/compare_app.py).
+# The core ML stack (tensorflow, torch, transformers, pillow, numpy) is expected
+# to already be in the .conda-py311 env. Install Flask into that env:
+#   .conda-py311/bin/pip install -r ml/serve/requirements.txt
+flask>=3.0
