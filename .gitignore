@@ -39,11 +39,19 @@ env/
 venv/
 ENV/
 .venv
+.conda-py311/
+.venv311/
 
 # ML specific
 ml/models/
+ml/models_pretrained/
 ml/data/
+ml/logs/
 uploads/
 *.h5
 *.keras
 *.tflite
+
+# Training artifacts / release archives (large binaries — distribute out-of-band)
+cropintel-models*.zip
+nohup.out

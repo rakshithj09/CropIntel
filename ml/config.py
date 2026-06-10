@@ -64,8 +64,8 @@ CROPS = {
         "dataset_name": "sivm205/soybean-diseased-leaf-dataset",
         # Top three disease folders by count in sivm205 + Healthy (extras via soybean_healthy / Mendeley)
         "diseases": [
-            "powdery_mildew",
-            "Sudden Death Syndrone",
+            "Powdery Mildew",
+            "Sudden Death Syndrome",
             "Yellow Mosaic",
             "Healthy",
         ],
@@ -100,7 +100,7 @@ CROPS = {
 # Training hyperparameters
 TRAINING_CONFIG = {
     "batch_size": 32,
-    "epochs": 40,
+    "epochs": 60,
     "learning_rate": 0.001,
     "validation_split": 0.2,
     "test_split": 0.1,

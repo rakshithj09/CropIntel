@@ -163,17 +163,26 @@ export async function POST(request: NextRequest) {
     // OWASP: Prevent information disclosure
     console.error('Prediction error:', error)
     
-    // Surface safe, user-actionable image quality errors from inference.
+    // Surface safe, user-actionable errors from inference.
     const errorMessage = error instanceof Error ? error.message : 'Prediction failed'
+    const msg = errorMessage.toLowerCase()
     if (
-      errorMessage.toLowerCase().includes('retake the image') ||
-      errorMessage.toLowerCase().includes('clear plant leaf') ||
-      errorMessage.toLowerCase().includes('appears blurry')
+      msg.includes('retake the image') ||
+      msg.includes('clear plant leaf') ||
+      msg.includes('appears blurry')
     ) {
       return createSecureResponse({ error: errorMessage }, 400)
     }
 
-    // Return generic error message without exposing internal details
+    // Surface model-not-ready errors so operators know to train/fetch models.
+    if (msg.includes('no trained models found') || msg.includes('model not found')) {
+      return createSecureResponse(
+        { error: 'Model not ready. Please train or install a model for this crop before running analysis.' },
+        503
+      )
+    }
+
+    console.error('Unhandled prediction error:', errorMessage)
     return createSecureResponse(
       { error: 'Prediction failed. Please try again later.' },
       500
@@ -184,7 +193,11 @@ export async function POST(request: NextRequest) {
 function runPrediction(imagePath: string, crop: string): Promise<any> {
   return new Promise((resolve, reject) => {
     const scriptPath = join(process.cwd(), 'scripts', 'predict.py')
-    const pythonProcess = spawn('python3', [scriptPath, imagePath, crop])
+    // Use the interpreter that has TensorFlow installed. The default `python3`
+    // on this machine is a venv without TF; set CROPINTEL_PYTHON to the conda
+    // env (e.g. .conda-py311/bin/python) so inference works.
+    const pythonBin = process.env.CROPINTEL_PYTHON || 'python3'
+    const pythonProcess = spawn(pythonBin, [scriptPath, imagePath, crop])
 
     let stdout = ''
     let stderr = ''
@@ -199,12 +212,15 @@ function runPrediction(imagePath: string, crop: string): Promise<any> {
 
     pythonProcess.on('close', (code) => {
       if (code !== 0) {
-        // Try to parse error as JSON first
+        // TF may write warnings to stderr before our JSON error line.
+        // Find the last line that looks like JSON rather than parsing the whole blob.
+        const stderrLines = stderr.split('\n').map((l) => l.trim()).filter(Boolean)
+        const jsonLine = stderrLines.slice().reverse().find((l) => l.startsWith('{')) ?? ''
         try {
-          const errorData = JSON.parse(stderr)
-          reject(new Error(errorData.error || stderr || `Process exited with code ${code}`))
+          const errorData = JSON.parse(jsonLine)
+          reject(new Error(errorData.error || stderrLines.at(-1) || `Process exited with code ${code}`))
         } catch {
-          reject(new Error(stderr || `Process exited with code ${code}`))
+          reject(new Error(stderrLines.at(-1) || `Process exited with code ${code}`))
         }
         return
       }
