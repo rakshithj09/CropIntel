@@ -44,6 +44,7 @@ ENV/
 
 # ML specific
 ml/models/
+ml/models_pretrained/
 ml/data/
 ml/logs/
 uploads/
