@@ -1,0 +1,12 @@
+# Ignore test images, keep structure + docs
+*.jpg
+*.jpeg
+*.png
+*.bmp
+*.webp
+*.JPG
+*.JPEG
+*.PNG
+!README.md
+!.gitignore
+!.gitkeep
