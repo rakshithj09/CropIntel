@@ -3,17 +3,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import Image from 'next/image'
-import { Bell, MapPin, Sparkles, History as HistoryIcon, ArrowRight, Loader2, Camera, ArrowLeftRight } from 'lucide-react'
+import { ArrowRight, Loader2 } from 'lucide-react'
 import ImageUpload from '@/components/ImageUpload'
 import CropSelector from '@/components/CropSelector'
 import StateSelector from '@/components/StateSelector'
 import PredictionResults from '@/components/PredictionResults'
-import DiseaseInfo from '@/components/DiseaseInfo'
 import PredictionHistory from '@/components/PredictionHistory'
-import ExportResults from '@/components/ExportResults'
-import TipsAndGuidelines from '@/components/TipsAndGuidelines'
 import Diagnosis from '@/components/Diagnosis'
-import NotificationSystem from '@/components/NotificationSystem'
+import ExportResults from '@/components/ExportResults'
 import FarmerRegistration from '@/components/FarmerRegistration'
 import FarmerVerificationBadge from '@/components/FarmerVerificationBadge'
 import HealthComparisonPanel from '@/components/HealthComparisonPanel'
@@ -40,13 +37,13 @@ export default function Home() {
   const [selectedImage, setSelectedImage] = useState<File | null>(null)
   const [selectedCrop, setSelectedCrop] = useState<string>('corn')
   const [selectedState, setSelectedState] = useState<string>('IA')
-  const [photoMode, setPhotoMode] = useState<'single' | 'compare'>('single')
+  const [analysisMode, setAnalysisMode] = useState<'single' | 'compare'>('single')
   const [farmerProfile, setFarmerProfile] = useState<StoredFarmerProfile | null>(null)
   const [prediction, setPrediction] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [imageUrl, setImageUrl] = useState<string | null>(null)
-  const [activeView, setActiveView] = useState<'diagnose' | 'history' | 'outbreaks'>('diagnose')
+  const [activeView, setActiveView] = useState<'diagnose' | 'history' | 'alerts'>('diagnose')
   // Initialize with a sample outbreak in Russellville, Arkansas
   const [outbreakReports, setOutbreakReports] = useState<OutbreakReport[]>([
     {
@@ -199,7 +196,7 @@ export default function Home() {
 
   const regionNote =
     getRelevantDiseasesForCropState(selectedCrop, selectedState) !== null
-      ? `Regional filter: showing labels common for ${selectedCrop} in ${selectedState} (illustrative). Other states or crops may show all labels.`
+      ? `Showing labels common for ${selectedCrop} in ${selectedState}.`
       : undefined
 
   const handlePredict = async () => {
@@ -315,240 +312,221 @@ export default function Home() {
     )
   }
 
+  const handleSaveCurrentResult = () => {
+    if (!prediction || !imageUrl) return
+    const confidencePercent =
+      typeof prediction.confidence === 'number' && prediction.confidence <= 1
+        ? prediction.confidence * 100
+        : prediction.confidence
+    savePredictionToHistory(selectedCrop, prediction.disease, confidencePercent, imageUrl)
+  }
+
   return (
-    <main className="min-h-screen min-h-[100dvh] px-3 sm:px-4 py-4 sm:py-6 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-      <div className="mx-auto max-w-7xl">
-        {/* Top bar */}
-        <header className="sticky top-0 z-40 -mx-3 sm:-mx-4 px-3 sm:px-4 pt-[max(0.5rem,env(safe-area-inset-top))] pb-3 border-b border-slate-200/60 bg-white/95">
-          <div className="mx-auto max-w-7xl flex items-center justify-between gap-2 sm:gap-3">
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="w-10 h-10 shrink-0 rounded-2xl bg-gradient-to-br from-primary-600 to-primary-700 text-white flex items-center justify-center shadow-sm overflow-hidden">
-                <Image
-                  src="/brand/wheat-mark-transparent.png"
-                  alt="CropIntel"
-                  width={22}
-                  height={44}
-                  className="opacity-95 object-contain drop-shadow-[0_1px_0_rgba(0,0,0,0.08)]"
-                  priority
-                />
-              </div>
-              <div className="leading-tight min-w-0">
-                <div className="text-sm font-semibold text-slate-900 truncate">CropIntel</div>
-                <div className="text-[11px] sm:text-xs text-slate-500 leading-snug">Crop health insights</div>
-              </div>
-            </div>
+    <main className="min-h-screen min-h-[100dvh] bg-[#F1F6EF] px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-[#1F2A1F] sm:px-6">
+      <header className="-mx-4 border-b border-[#DDE6D8] bg-[#F1F6EF]/95 px-4 py-4 backdrop-blur sm:-mx-6 sm:px-6 sm:py-5">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
+          <button
+            type="button"
+            onClick={() => setActiveView('diagnose')}
+            className="flex min-w-0 items-center gap-3 text-left"
+          >
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#2F6B3F]">
+              <Image
+                src="/brand/wheat-mark-transparent.png"
+                alt="CropIntel"
+                width={23}
+                height={46}
+                className="object-contain opacity-95"
+                priority
+              />
+            </span>
+            <span className="truncate text-lg font-semibold text-[#1F2A1F]">CropIntel</span>
+          </button>
 
-            <nav className="hidden md:flex items-center gap-2">
-              <a
-                href="/"
-                className="px-3 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+          <nav className="flex shrink-0 items-center gap-1 text-[15px] font-medium text-[#6B7168] sm:gap-2 sm:text-base">
+            {[
+              { id: 'diagnose', label: 'Diagnose' },
+              { id: 'history', label: 'History' },
+              { id: 'alerts', label: 'Alerts' },
+            ].map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setActiveView(item.id as 'diagnose' | 'history' | 'alerts')}
+                className={`min-h-11 rounded-lg px-3 transition-colors sm:px-4 ${
+                  activeView === item.id
+                    ? 'text-[#1F2A1F]'
+                    : 'hover:bg-white hover:text-[#1F2A1F]'
+                }`}
               >
-                Diagnose
-              </a>
-            </nav>
+                {item.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+      </header>
 
-            <div className="flex items-center gap-1.5 sm:gap-2 flex-nowrap shrink-0 justify-end">
-              {farmerProfile && (
-                <FarmerVerificationBadge verified={farmerProfile.verifiedFarmer} compact />
+      {activeView === 'diagnose' && (
+        <div className="mx-auto max-w-[640px] py-8 sm:py-12">
+          <section className="mb-6 text-center">
+            <h1 className="text-[30px] font-bold leading-tight tracking-tight text-[#1F2A1F] sm:text-[32px]">
+              Diagnose crop issue
+            </h1>
+            <p className="mt-2 text-[15px] leading-6 text-[#6B7168] sm:text-base">
+              Take or upload a clear leaf photo.
+            </p>
+          </section>
+
+          <section className="rounded-2xl border border-[#E2E4DD] bg-white p-5 shadow-sm sm:p-7">
+            <div className="space-y-5">
+              <CropSelector
+                crops={Object.keys(CROPS)}
+                selectedCrop={selectedCrop}
+                onCropChange={setSelectedCrop}
+              />
+              <StateSelector selectedState={selectedState} onStateChange={setSelectedState} />
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-[#1F2A1F]">
+                  Mode
+                </label>
+                <div className="grid grid-cols-2 gap-1 rounded-xl border border-[#CFE0C9] bg-[#E7F0E3] p-1">
+                  {[
+                    { id: 'single', label: 'Single photo' },
+                    { id: 'compare', label: 'Compare photos' },
+                  ].map((mode) => (
+                    <button
+                      key={mode.id}
+                      type="button"
+                      onClick={() => {
+                        setAnalysisMode(mode.id as 'single' | 'compare')
+                        setError(null)
+                        setPrediction(null)
+                      }}
+                      className={`min-h-[44px] rounded-lg px-3 text-sm font-semibold transition-colors ${
+                        analysisMode === mode.id
+                          ? 'bg-[#2F6B3F] text-white shadow-sm'
+                          : 'text-[#2F6B3F] hover:bg-white/70 hover:text-[#285A35]'
+                      }`}
+                    >
+                      {mode.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {analysisMode === 'single' ? (
+                <>
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-[#1F2A1F]">
+                      Add leaf photo
+                    </label>
+                    <ImageUpload
+                      selectedImage={selectedImage}
+                      onImageSelect={handleImageSelect}
+                      onClear={handleClear}
+                      title="Take a clear photo of one leaf."
+                      hint=""
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handlePredict}
+                    disabled={!selectedCrop || !selectedState || !selectedImage || loading}
+                    className="flex min-h-[52px] w-full touch-manipulation items-center justify-center gap-2 rounded-xl bg-[#2F6B3F] px-5 py-3 text-base font-semibold text-white transition-colors hover:bg-[#285A35] disabled:cursor-not-allowed disabled:bg-[#B8BDB4] disabled:text-white"
+                  >
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+                    {loading ? 'Analyzing...' : 'Analyze leaf'}
+                  </button>
+
+                  <details className="text-sm text-[#6B7168]">
+                    <summary className="w-fit cursor-pointer rounded-lg px-1 py-1 font-medium text-[#2F6B3F] hover:text-[#285A35]">
+                      Photo tips
+                    </summary>
+                    <ul className="mt-2 grid gap-1.5 rounded-xl border border-[#E2E4DD] bg-[#F6F7F5] p-3">
+                      {['Use one leaf', 'Keep it in focus', 'Use natural light', 'Avoid shadows'].map((tip) => (
+                        <li key={tip}>{tip}</li>
+                      ))}
+                    </ul>
+                  </details>
+                </>
+              ) : (
+                <HealthComparisonPanel crop={selectedCrop} applyRegionalFilter={applyRegionalFilter} />
               )}
-              <div className="hidden sm:block">
-                <FarmerRegistration onRegister={handleFarmerRegister} crops={Object.keys(CROPS)} />
+
+              {error && (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-rose-900">
+                  <div className="text-sm font-semibold">Something went wrong</div>
+                  <div className="mt-1 text-sm">{error}</div>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {analysisMode === 'single' && prediction && (
+            <section className="mt-6 space-y-4">
+              <PredictionResults prediction={prediction} crop={selectedCrop} regionNote={regionNote} />
+              <Diagnosis
+                disease={prediction.disease}
+                crop={selectedCrop}
+                confidence={
+                  typeof prediction.confidence === 'number' && prediction.confidence <= 1
+                    ? prediction.confidence * 100
+                    : prediction.confidence
+                }
+                isHealthy={prediction.is_healthy}
+              />
+              <ExportResults prediction={prediction} crop={selectedCrop} imageUrl={imageUrl} />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={handleSaveCurrentResult}
+                  disabled={!prediction || !imageUrl}
+                  className="min-h-[48px] rounded-xl border border-[#E2E4DD] bg-white px-4 py-3 text-sm font-semibold text-[#1F2A1F] transition-colors hover:bg-[#F6F7F5] disabled:cursor-not-allowed disabled:text-[#9CA39A]"
+                >
+                  Save result
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClear}
+                  className="min-h-[48px] rounded-xl bg-[#2F6B3F] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#285A35]"
+                >
+                  Analyze another leaf
+                </button>
               </div>
-              <div className="relative z-50">
-                <NotificationSystem outbreaks={outbreakReports} currentFarmerLocation={farmerLocation || undefined} />
-              </div>
+            </section>
+          )}
+        </div>
+      )}
+
+      {activeView === 'history' && (
+        <section className="mx-auto max-w-4xl py-8 sm:py-12">
+          <PredictionHistory onSelectHistory={handleHistorySelect} />
+        </section>
+      )}
+
+      {activeView === 'alerts' && (
+        <section className="mx-auto max-w-5xl py-8 sm:py-12">
+          <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-[#1F2A1F]">Area alerts</h1>
+              <p className="mt-1 text-sm text-[#6B7168]">Track and report nearby crop disease outbreaks.</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              {farmerProfile && <FarmerVerificationBadge verified={farmerProfile.verifiedFarmer} />}
+              <FarmerRegistration onRegister={handleFarmerRegister} crops={Object.keys(CROPS)} />
             </div>
           </div>
-        </header>
-
-        {/* Hero */}
-        <section className="mt-5 sm:mt-8 mb-5 sm:mb-6">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-            <div className="max-w-2xl">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-slate-900 tracking-tight text-balance">
-                Diagnose crop issues from a photo
-              </h1>
-              <p className="mt-2 text-sm sm:text-base text-slate-600">
-                Upload a leaf image, pick the crop, and get a ranked set of labels with confidence.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="px-3 py-2 rounded-xl border border-slate-200 bg-white/80 text-sm text-slate-700 flex items-center gap-2">
-                <Bell className="w-4 h-4 text-primary-700" />
-                Outbreak alerts
-              </div>
-            </div>
+          <div className="rounded-2xl border border-[#E2E4DD] bg-white p-3 shadow-sm sm:p-5">
+            <USOutbreakMap
+              reports={outbreakReports}
+              onReportSubmit={handleOutbreakReport}
+              reporterVerified={farmerProfile?.verifiedFarmer ?? false}
+            />
           </div>
         </section>
-
-        {/* Views */}
-        <div className="grid grid-cols-3 gap-2 mb-5 sm:mb-6 sm:flex sm:flex-wrap sm:items-center">
-          {(
-            [
-              { id: 'diagnose', label: 'Diagnose', icon: Sparkles },
-              { id: 'history', label: 'History', icon: HistoryIcon },
-              { id: 'outbreaks', label: 'Outbreaks', icon: MapPin },
-            ] as const
-          ).map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setActiveView(id)}
-              className={`touch-manipulation min-h-[44px] px-2 sm:px-4 py-2 rounded-xl border text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1.5 sm:gap-2 ${
-                activeView === id
-                  ? 'bg-primary-700 text-white border-primary-700'
-                  : 'bg-white/70 text-slate-700 border-slate-200 hover:bg-white hover:border-primary-300'
-              }`}
-            >
-              <Icon className="w-4 h-4 shrink-0" />
-              <span className="truncate">{label}</span>
-            </button>
-          ))}
-        </div>
-
-        {activeView === 'diagnose' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              <section className="surface rounded-2xl p-4 sm:p-6">
-                <div className="flex items-start justify-between gap-4 flex-wrap">
-                  <div>
-                    <h2 className="text-base font-semibold text-slate-900">Photo analysis</h2>
-                    <p className="text-sm text-slate-600 mt-1">Best results with a sharp, well-lit close-up.</p>
-                  </div>
-                  <div className="text-xs text-slate-500">
-                    Step <span className="font-semibold text-slate-700">1</span> of 3
-                  </div>
-                </div>
-
-                <div className="mt-5 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPhotoMode('single')}
-                    className={`touch-manipulation min-h-[44px] px-4 py-2 rounded-xl border text-sm font-semibold flex items-center gap-2 transition-all ${
-                      photoMode === 'single'
-                        ? 'bg-primary-700 text-white border-primary-700'
-                        : 'bg-white text-slate-700 border-slate-200 hover:border-primary-300'
-                    }`}
-                  >
-                    <Camera className="w-4 h-4" />
-                    Single photo
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPhotoMode('compare')}
-                    className={`touch-manipulation min-h-[44px] px-4 py-2 rounded-xl border text-sm font-semibold flex items-center gap-2 transition-all ${
-                      photoMode === 'compare'
-                        ? 'bg-primary-700 text-white border-primary-700'
-                        : 'bg-white text-slate-700 border-slate-200 hover:border-primary-300'
-                    }`}
-                  >
-                    <ArrowLeftRight className="w-4 h-4" />
-                    Past vs current
-                  </button>
-                </div>
-
-                <div className="mt-5 space-y-5">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <CropSelector crops={Object.keys(CROPS)} selectedCrop={selectedCrop} onCropChange={setSelectedCrop} />
-                    <StateSelector selectedState={selectedState} onStateChange={setSelectedState} />
-                  </div>
-
-                  {photoMode === 'single' && (
-                    <>
-                      <ImageUpload selectedImage={selectedImage} onImageSelect={handleImageSelect} onClear={handleClear} />
-                      <div className="flex items-end">
-                        <button
-                          type="button"
-                          onClick={handlePredict}
-                          disabled={!selectedImage || loading}
-                          className="touch-manipulation min-h-[48px] w-full md:max-w-md inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-primary-700 text-white font-semibold shadow-sm hover:bg-primary-800 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors"
-                        >
-                          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
-                          {loading ? 'Analyzing…' : 'Run analysis'}
-                        </button>
-                      </div>
-                    </>
-                  )}
-
-                  {photoMode === 'compare' && (
-                    <HealthComparisonPanel crop={selectedCrop} applyRegionalFilter={applyRegionalFilter} />
-                  )}
-
-                  {error && (
-                    <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-rose-900">
-                      <div className="text-sm font-semibold">Something went wrong</div>
-                      <div className="text-sm mt-1">{error}</div>
-                    </div>
-                  )}
-
-                  {photoMode === 'single' && prediction && (
-                    <>
-                      <PredictionResults prediction={prediction} regionNote={regionNote} />
-                      <Diagnosis
-                        disease={prediction.disease}
-                        crop={selectedCrop}
-                        confidence={
-                          typeof prediction.confidence === 'number' && prediction.confidence <= 1
-                            ? prediction.confidence * 100
-                            : prediction.confidence
-                        }
-                        isHealthy={prediction.is_healthy}
-                      />
-                      <DiseaseInfo diseaseName={prediction.disease} crop={selectedCrop} />
-                      <ExportResults prediction={prediction} crop={selectedCrop} imageUrl={imageUrl} />
-                    </>
-                  )}
-                </div>
-              </section>
-            </div>
-
-            <aside className="lg:col-span-1 space-y-6">
-              <TipsAndGuidelines />
-
-              <div className="surface rounded-2xl p-4 sm:p-6">
-                <h3 className="text-base font-semibold text-slate-900">Alerts</h3>
-                <p className="text-sm text-slate-600 mt-1">
-                  Register a farm location to receive outbreak notifications within 250 miles.
-                </p>
-                <div className="mt-4 sm:hidden space-y-3">
-                  {farmerProfile && (
-                    <FarmerVerificationBadge verified={farmerProfile.verifiedFarmer} />
-                  )}
-                  <FarmerRegistration onRegister={handleFarmerRegister} crops={Object.keys(CROPS)} />
-                </div>
-              </div>
-            </aside>
-          </div>
-        )}
-
-        {activeView === 'history' && (
-          <section className="surface rounded-2xl p-4 sm:p-6">
-            <PredictionHistory onSelectHistory={handleHistorySelect} />
-          </section>
-        )}
-
-        {activeView === 'outbreaks' && (
-          <section className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-6 shadow-sm">
-            <div className="mb-4">
-              <h2 className="text-base font-semibold text-slate-900">Outbreak map</h2>
-              <p className="text-sm text-slate-600 mt-1">
-                Tap or click to report a potential outbreak and help track disease spread.
-              </p>
-            </div>
-            <div className="bg-white rounded-xl p-2 sm:p-4 border border-slate-200 -mx-1 sm:mx-0">
-              <USOutbreakMap
-                reports={outbreakReports}
-                onReportSubmit={handleOutbreakReport}
-                reporterVerified={farmerProfile?.verifiedFarmer ?? false}
-              />
-            </div>
-          </section>
-        )}
-
-        <footer className="text-center mt-10 mb-6 text-slate-500">
-          <p className="text-xs">Models: EfficientNet / TensorFlow Lite</p>
-        </footer>
-      </div>
+      )}
     </main>
   )
 }

@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { AlertCircle, CheckCircle, AlertTriangle, Lightbulb, Shield, Calendar, Droplet } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { AlertTriangle, CheckCircle, ChevronDown, Shield, Sprout } from 'lucide-react'
 import { getDiseaseInfo } from '@/lib/diseaseInfo'
 
 interface DiagnosisProps {
@@ -11,311 +11,212 @@ interface DiagnosisProps {
   isHealthy: boolean
 }
 
+function severityTone(severity?: string) {
+  if (severity === 'high') return 'border-rose-200 bg-rose-50 text-rose-900'
+  if (severity === 'medium') return 'border-amber-200 bg-amber-50 text-amber-900'
+  return 'border-primary-200 bg-primary-50 text-primary-900'
+}
+
+function actionLine(severity?: string) {
+  if (severity === 'high') return 'Check nearby plants and act soon if symptoms are spreading.'
+  if (severity === 'medium') return 'Monitor closely and compare symptoms before treating.'
+  return 'Keep watching the crop and focus on prevention.'
+}
+
+function shortTermAction(severity?: string) {
+  if (severity === 'high') return 'Recheck the field within 24-48 hours and consider treatment if symptoms are spreading.'
+  if (severity === 'medium') return 'Scout again over the next few days and compare symptoms before treating.'
+  return 'Keep normal scouting habits and document any changes.'
+}
+
+function treatmentReminder(severity?: string) {
+  if (severity === 'high') return 'Because this can move quickly, confirm the symptoms and act promptly when the field pattern matches.'
+  if (severity === 'medium') return 'Treatment may be useful if disease pressure increases or weather favors spread.'
+  return 'Treatment is usually not urgent unless symptoms worsen.'
+}
+
+function DetailSection({
+  title,
+  children,
+}: {
+  title: string
+  children: ReactNode
+}) {
+  return (
+    <details className="rounded-xl border border-[#E2E4DD] bg-[#F6F7F5] p-4">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-[#2F6B3F]">
+        {title}
+        <ChevronDown className="h-4 w-4" />
+      </summary>
+      <div className="mt-3 text-sm leading-relaxed text-[#1F2A1F]">{children}</div>
+    </details>
+  )
+}
+
+function InfoBlock({
+  title,
+  children,
+}: {
+  title: string
+  children: ReactNode
+}) {
+  return (
+    <div className="rounded-xl border border-[#E2E4DD] bg-white p-3">
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#6B7168]">{title}</p>
+      <div className="space-y-2">{children}</div>
+    </div>
+  )
+}
+
 export default function Diagnosis({ disease, crop, confidence, isHealthy }: DiagnosisProps) {
-  const [activeTab, setActiveTab] = useState<'assessment' | 'treatment' | 'prevention'>('assessment')
-  
   const diseaseInfo = getDiseaseInfo(disease, crop)
+  const prevention = diseaseInfo?.prevention ?? ['Scout fields regularly', 'Remove badly affected plants when appropriate']
+  const treatment = diseaseInfo?.treatment ?? ['Confirm symptoms with a local agronomist before treatment']
+  const symptoms = diseaseInfo?.symptoms ?? []
 
   if (isHealthy) {
     return (
-      <div className="mt-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl border-2 border-green-300 p-8 shadow-xl">
-        <div className="flex items-start gap-4">
-          <div className="p-3 bg-green-100 rounded-xl">
-            <CheckCircle className="w-8 h-8 text-green-600" />
-          </div>
-          <div className="flex-1">
-            <h3 className="text-2xl font-extrabold text-green-900 mb-3">Diagnosis: Healthy Plant</h3>
-            <p className="text-green-800 mb-4">
-              Great news! Your {crop} plant appears to be healthy with no signs of disease detected.
+      <div className="rounded-2xl border border-[#E2E4DD] bg-white p-5 shadow-sm sm:p-7">
+        <div className="flex items-start gap-3">
+          <span className="rounded-lg bg-emerald-100 p-2 text-emerald-800">
+            <CheckCircle className="h-5 w-5" />
+          </span>
+          <div>
+            <h3 className="text-lg font-semibold text-[#1F2A1F]">What to do next</h3>
+            <p className="mt-1 text-sm text-[#6B7168]">
+              Keep scouting and compare new leaves over time.
             </p>
-            <div className="bg-white/60 rounded-xl p-5 border border-green-200">
-              <h4 className="font-bold text-green-900 mb-3 flex items-center gap-2">
-                <Shield className="w-5 h-5" />
-                Maintenance Recommendations
-              </h4>
-              <ul className="space-y-2 text-green-800">
-                {diseaseInfo?.prevention.map((tip, index) => (
-                  <li key={index} className="flex items-start gap-2">
-                    <span className="text-green-600 mt-1">✓</span>
-                    <span>{tip}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
           </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {prevention.map((tip) => (
+            <div key={tip} className="rounded-lg border border-[#E2E4DD] bg-[#F6F7F5] p-3 text-sm text-[#1F2A1F]">
+              {tip}
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 rounded-xl border border-[#E2E4DD] bg-[#F6F7F5] p-4 text-sm text-[#1F2A1F]">
+          <p className="font-semibold">Scout routine</p>
+          <p className="mt-1 text-[#6B7168]">
+            Keep checking leaves weekly, especially after rain, heavy dew, or weather changes.
+          </p>
         </div>
       </div>
     )
   }
 
-  const getSeverityLevel = () => {
-    if (diseaseInfo?.severity === 'high') return 'Critical'
-    if (diseaseInfo?.severity === 'medium') return 'Moderate'
-    return 'Mild'
-  }
-
-  const getSeverityColor = () => {
-    if (diseaseInfo?.severity === 'high') return 'text-red-600 bg-red-100 border-red-300'
-    if (diseaseInfo?.severity === 'medium') return 'text-orange-600 bg-orange-100 border-orange-300'
-    return 'text-yellow-600 bg-yellow-100 border-yellow-300'
-  }
-
-  const getConfidenceLevel = () => {
-    if (confidence >= 90) return { level: 'Very High', color: 'text-green-600' }
-    if (confidence >= 75) return { level: 'High', color: 'text-blue-600' }
-    if (confidence >= 60) return { level: 'Moderate', color: 'text-yellow-600' }
-    return { level: 'Low', color: 'text-orange-600' }
-  }
-
-  const confidenceInfo = getConfidenceLevel()
-
   return (
-    <div className="mt-6 bg-gradient-to-br from-white to-gray-50 rounded-2xl border-2 border-gray-200/50 p-4 shadow-xl sm:p-8">
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <h3 className="flex items-center gap-2 text-2xl font-extrabold text-gray-900 sm:gap-3 sm:text-3xl">
-          <AlertCircle className="h-7 w-7 shrink-0 text-primary-600 sm:h-8 sm:w-8" />
-          <span className="min-w-0 leading-tight">Detailed Diagnosis</span>
-        </h3>
-        <div
-          className={`w-fit shrink-0 rounded-xl border-2 px-3 py-1.5 text-xs font-bold sm:px-4 sm:py-2 sm:text-sm ${getSeverityColor()}`}
-        >
-          {getSeverityLevel()} Severity
+    <div className="rounded-2xl border border-[#E2E4DD] bg-white p-5 shadow-sm sm:p-7">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start gap-3">
+          <span className="rounded-lg bg-[#F6F7F5] p-2 text-[#2F6B3F]">
+            <Sprout className="h-5 w-5" />
+          </span>
+          <div>
+            <h3 className="text-lg font-semibold text-[#1F2A1F]">What to do next</h3>
+            <p className="mt-1 text-sm text-[#6B7168]">{actionLine(diseaseInfo?.severity)}</p>
+          </div>
+        </div>
+        <div className={`w-fit rounded-full border px-3 py-1 text-xs font-semibold ${severityTone(diseaseInfo?.severity)}`}>
+          {diseaseInfo?.severity ? `${diseaseInfo.severity} concern` : `${confidence.toFixed(0)}% confidence`}
         </div>
       </div>
 
-      {/* Confidence & Assessment */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div className="bg-white rounded-xl p-5 border-2 border-gray-200 shadow-md">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-semibold text-gray-600 uppercase">Confidence Level</span>
-            <span className={`text-lg font-bold ${confidenceInfo.color}`}>
-              {confidenceInfo.level}
-            </span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-3">
-            <div
-              className={`h-3 rounded-full transition-all duration-500 ${
-                confidence >= 90 ? 'bg-green-500' :
-                confidence >= 75 ? 'bg-blue-500' :
-                confidence >= 60 ? 'bg-yellow-500' : 'bg-orange-500'
-              }`}
-              style={{ width: `${confidence}%` }}
-            />
-          </div>
-          <p className="text-xs text-gray-500 mt-2">
-            AI confidence: {confidence.toFixed(1)}%
-          </p>
-        </div>
+      <div className="mt-4 space-y-3">
+        <DetailSection title="What this means">
+          <div className="space-y-4">
+            <InfoBlock title="Likely issue">
+              <p>{diseaseInfo?.description || `This photo looks closest to ${disease} on ${crop}.`}</p>
+            </InfoBlock>
 
-        <div className="bg-white rounded-xl p-5 border-2 border-gray-200 shadow-md">
-          <div className="flex items-center gap-3 mb-2">
-            <Calendar className="w-5 h-5 text-primary-600" />
-            <span className="text-sm font-semibold text-gray-600 uppercase">Recommended Action</span>
-          </div>
-          <p className="text-lg font-bold text-gray-900">
-            {diseaseInfo?.severity === 'high' ? 'Immediate Treatment Required' :
-             diseaseInfo?.severity === 'medium' ? 'Monitor & Treat Soon' :
-             'Preventive Measures Recommended'}
-          </p>
-        </div>
-      </div>
+            <InfoBlock title="Expected symptoms">
+              {symptoms.length > 0 ? (
+                <ul className="space-y-2">
+                  {symptoms.map((symptom) => (
+                    <li key={symptom} className="flex gap-2">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+                      <span>{symptom}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p>No obvious disease symptoms were listed for this result.</p>
+              )}
+            </InfoBlock>
 
-      {/* Tabs — grid keeps all three inside the card on narrow screens */}
-      <div className="-mx-1 mb-6 border-b-2 border-gray-200 px-1 sm:mx-0 sm:px-0">
-        <div className="grid w-full grid-cols-3 gap-1 sm:gap-2">
-          {[
-            { id: 'assessment', label: 'Assessment', icon: AlertCircle },
-            { id: 'treatment', label: 'Treatment', icon: Droplet },
-            { id: 'prevention', label: 'Prevention', icon: Shield },
-          ].map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setActiveTab(id as 'assessment' | 'treatment' | 'prevention')}
-              className={`flex min-h-[3.25rem] min-w-0 touch-manipulation flex-col items-center justify-center gap-0.5 rounded-t-lg px-1.5 py-2 text-center text-[11px] font-semibold leading-tight transition-all duration-300 sm:flex-row sm:gap-2 sm:rounded-t-xl sm:px-4 sm:py-3 sm:text-sm ${
-                activeTab === id
-                  ? 'bg-primary-600 text-white shadow-lg'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-primary-600'
-              }`}
-            >
-              <Icon className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
-              <span className="break-words">{label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Tab Content */}
-      <div className="min-h-[300px]">
-        {activeTab === 'assessment' && (
-          <div className="space-y-6">
-            <div className="bg-white/80 rounded-xl p-6 border-2 border-gray-200">
-              <h4 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <AlertTriangle className="w-6 h-6 text-orange-600" />
-                Disease Assessment
-              </h4>
-              <p className="text-gray-700 mb-4 leading-relaxed">
-                {diseaseInfo?.description || `Based on the AI analysis, your ${crop} plant shows signs of ${disease}.`}
+            <InfoBlock title="How to use this result">
+              <p>
+                Model confidence is about {confidence.toFixed(0)}%. Compare this result with what you see in the field
+                before making a treatment decision.
               </p>
-              
-              {diseaseInfo?.symptoms && diseaseInfo.symptoms.length > 0 && (
-                <div className="mt-5">
-                  <h5 className="font-bold text-gray-900 mb-3">Expected Symptoms:</h5>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {diseaseInfo.symptoms.map((symptom, index) => (
-                      <div key={index} className="flex items-start gap-2 bg-orange-50 rounded-lg p-3 border border-orange-200">
-                        <span className="text-orange-600 mt-1">•</span>
-                        <span className="text-sm text-gray-700">{symptom}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="flex items-start gap-3">
-                  <Lightbulb className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-semibold text-blue-900 mb-1">Diagnostic Tip</p>
-                    <p className="text-sm text-blue-800">
-                      Compare the visual symptoms on your plant with the expected symptoms listed above. 
-                      If symptoms match closely, the diagnosis is likely accurate. For confirmation, 
-                      consider consulting with an agricultural extension service.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
+              <p className="text-[#6B7168]">
+                Check several nearby plants, look at both healthy and affected leaves, and note whether symptoms are
+                spreading across the field or isolated to a small area.
+              </p>
+            </InfoBlock>
           </div>
-        )}
+        </DetailSection>
 
-        {activeTab === 'treatment' && (
-          <div className="space-y-6">
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border-2 border-blue-200">
-              <h4 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <Droplet className="w-6 h-6 text-blue-600" />
-                Treatment Plan
-              </h4>
-              
-              {diseaseInfo?.treatment && diseaseInfo.treatment.length > 0 ? (
-                <div className="space-y-4">
-                  <p className="text-gray-700 font-semibold mb-4">
-                    Immediate treatment steps for {disease}:
-                  </p>
-                  <div className="space-y-3">
-                    {diseaseInfo.treatment.map((step, index) => (
-                      <div key={index} className="bg-white rounded-lg p-4 border border-blue-200 shadow-sm">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">
-                            {index + 1}
-                          </div>
-                          <p className="text-gray-800 flex-1">{step}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-gray-700">
-                  Treatment recommendations are being prepared. Please consult with an agricultural expert 
-                  for specific treatment options for {disease} in {crop}.
-                </p>
-              )}
+        <DetailSection title="Treatment options">
+          <div className="space-y-4">
+            <InfoBlock title="Recommended actions">
+              <ul className="space-y-2">
+                {treatment.map((step) => (
+                  <li key={step} className="flex gap-2">
+                    <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#2F6B3F]" />
+                    <span>{step}</span>
+                  </li>
+                ))}
+              </ul>
+            </InfoBlock>
 
-              <div className="mt-6 p-4 bg-yellow-50 rounded-lg border border-yellow-300">
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="w-5 h-5 text-yellow-700 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-bold text-yellow-900 mb-1">Important</p>
-                    <p className="text-sm text-yellow-800">
-                      Always follow label instructions when applying any treatments. Consider environmental 
-                      impact and use Integrated Pest Management (IPM) practices. For severe cases, 
-                      consult with certified agricultural professionals.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+            <InfoBlock title="Treatment timing">
+              <p>{treatmentReminder(diseaseInfo?.severity)}</p>
+              <p className="text-[#6B7168]">
+                The best timing depends on crop stage, weather, disease pressure, and how much of the field is affected.
+              </p>
+            </InfoBlock>
 
-        {activeTab === 'prevention' && (
-          <div className="space-y-6">
-            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border-2 border-green-200">
-              <h4 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <Shield className="w-6 h-6 text-green-600" />
-                Prevention Strategy
-              </h4>
-              
-              {diseaseInfo?.prevention && diseaseInfo.prevention.length > 0 ? (
-                <div className="space-y-4">
-                  <p className="text-gray-700 font-semibold mb-4">
-                    Long-term prevention measures to protect your {crop} crops:
-                  </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {diseaseInfo.prevention.map((prevention, index) => (
-                      <div key={index} className="bg-white rounded-lg p-4 border border-green-200 shadow-sm flex items-start gap-3">
-                        <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                        <p className="text-gray-800 text-sm">{prevention}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-gray-700">
-                  Prevention strategies are being developed. General best practices include crop rotation, 
-                  proper spacing, and regular monitoring.
-                </p>
-              )}
+            <InfoBlock title="Before applying anything">
+              <p>
+                Read and follow product labels, local rules, and pre-harvest intervals. For severe or uncertain cases,
+                confirm with a local agronomist or extension service.
+              </p>
+            </InfoBlock>
+          </div>
+        </DetailSection>
 
-              <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="flex items-start gap-3">
-                  <Calendar className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-bold text-blue-900 mb-1">Monitoring Schedule</p>
-                    <p className="text-sm text-blue-800">
-                      Regular monitoring is key to early detection. Check your {crop} fields weekly, 
-                      especially during critical growth stages. Early intervention is more effective 
-                      and cost-efficient than treating advanced disease.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+        <DetailSection title="Prevention">
+          <div className="space-y-4">
+            <InfoBlock title="Field practices">
+              <ul className="space-y-2">
+                {prevention.map((step) => (
+                  <li key={step} className="flex gap-2">
+                    <Shield className="mt-0.5 h-4 w-4 shrink-0 text-[#2F6B3F]" />
+                    <span>{step}</span>
+                  </li>
+                ))}
+              </ul>
+            </InfoBlock>
 
-      {/* Action Summary */}
-      <div className="mt-6 p-5 bg-gradient-to-r from-primary-50 to-blue-50 rounded-xl border-2 border-primary-200">
-        <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-          <Lightbulb className="w-5 h-5 text-primary-600" />
-          Quick Action Summary
-        </h4>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-          <div>
-            <p className="font-semibold text-gray-700 mb-1">1. Immediate</p>
-            <p className="text-gray-600">
-              {diseaseInfo?.severity === 'high' 
-                ? 'Apply treatment within 24-48 hours'
-                : diseaseInfo?.severity === 'medium'
-                ? 'Monitor closely and prepare treatment'
-                : 'Implement preventive measures'}
-            </p>
+            <InfoBlock title="Monitoring schedule">
+              <p>{shortTermAction(diseaseInfo?.severity)}</p>
+              <p className="text-[#6B7168]">
+                Take new photos from the same part of the field when possible. This makes it easier to compare whether
+                symptoms are improving, stable, or spreading.
+              </p>
+            </InfoBlock>
+
+            <InfoBlock title="Next season notes">
+              <p>
+                Keep a record of the field, crop, disease, weather conditions, and treatment decisions. That record can
+                help with variety selection, residue management, rotation planning, and future scouting.
+              </p>
+            </InfoBlock>
           </div>
-          <div>
-            <p className="font-semibold text-gray-700 mb-1">2. Short-term</p>
-            <p className="text-gray-600">
-              Follow treatment plan and monitor progress over next 7-14 days
-            </p>
-          </div>
-          <div>
-            <p className="font-semibold text-gray-700 mb-1">3. Long-term</p>
-            <p className="text-gray-600">
-              Implement prevention strategies to avoid future occurrences
-            </p>
-          </div>
-        </div>
+        </DetailSection>
       </div>
     </div>
   )

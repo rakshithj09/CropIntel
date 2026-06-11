@@ -17,16 +17,16 @@ export default function CropSelector({
     <div>
       <label
         htmlFor="crop-select"
-        className="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2"
+        className="mb-2 flex items-center gap-2 text-sm font-medium text-[#1F2A1F]"
       >
-        <Leaf className="w-4 h-4 text-primary-700" />
+        <Leaf className="h-4 w-4 text-[#2F6B3F]" />
         Crop
       </label>
       <select
         id="crop-select"
         value={selectedCrop}
         onChange={(e) => onCropChange(e.target.value)}
-        className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary-200/60 focus:border-primary-400 text-base font-semibold bg-white shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
+        className="soft-input min-h-[48px] w-full cursor-pointer rounded-xl px-4 py-3 text-base font-medium transition-colors hover:bg-[#F6F7F5]"
       >
         {crops.map((crop) => (
           <option key={crop} value={crop}>

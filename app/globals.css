@@ -45,9 +45,9 @@ div[title*="For development purposes only"] {
 }
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
+  --foreground-rgb: 31, 42, 31;
+  --background-start-rgb: 241, 246, 239;
+  --background-end-rgb: 241, 246, 239;
 }
 
 * {
@@ -56,10 +56,7 @@ div[title*="For development purposes only"] {
 
 body {
   color: rgb(var(--foreground-rgb));
-  background:
-    radial-gradient(1200px 600px at 20% 0%, rgba(112, 152, 112, 0.18), transparent 55%),
-    radial-gradient(900px 500px at 90% 10%, rgba(120, 160, 120, 0.16), transparent 60%),
-    linear-gradient(180deg, #ffffff 0%, #f8fafc 55%, #f1f5f9 100%);
+  background: #f1f6ef;
   min-height: 100vh;
   min-height: 100dvh;
   overflow-x: hidden;
@@ -103,6 +100,14 @@ img:not([src]) {
   }
 
   .surface {
-    @apply bg-white border border-slate-200/80 shadow-sm;
+    @apply border border-[#E2E4DD] bg-white shadow-sm;
+  }
+
+  .field-panel {
+    @apply border border-[#E2E4DD] bg-white shadow-sm;
+  }
+
+  .soft-input {
+    @apply border border-[#E2E4DD] bg-white text-[#1F2A1F] shadow-sm focus:border-[#2F6B3F] focus:outline-none focus:ring-4 focus:ring-[#2F6B3F]/10;
   }
 }

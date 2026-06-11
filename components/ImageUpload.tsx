@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Image as ImageIcon, Upload, X } from 'lucide-react'
+import { Camera, Upload } from 'lucide-react'
 
 interface ImageUploadProps {
   selectedImage: File | null
@@ -16,8 +16,8 @@ export default function ImageUpload({
   selectedImage,
   onImageSelect,
   onClear,
-  title = 'Upload a leaf photo',
-  hint = 'Drag & drop, choose a file, or take a photo.',
+  title = 'Take a clear photo of one leaf.',
+  hint = '',
 }: ImageUploadProps) {
   const [dragActive, setDragActive] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -61,37 +61,37 @@ export default function ImageUpload({
     <div>
       {!imageUrl ? (
         <div
-          className={`border border-dashed rounded-2xl p-6 sm:p-10 text-center transition-all duration-200 bg-slate-50/60 ${
+          className={`rounded-xl border border-dashed p-6 text-center transition-all duration-200 sm:p-8 ${
             dragActive
-              ? 'border-primary-500 bg-white shadow-md'
-              : 'border-slate-300 hover:border-slate-400 hover:bg-white'
+              ? 'border-[#2F6B3F] bg-[#F6F7F5]'
+              : 'border-[#E2E4DD] bg-[#F6F7F5] hover:border-[#2F6B3F]'
           }`}
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
           onDrop={handleDrop}
         >
-          <div className="mx-auto w-12 h-12 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-center mb-4">
-            <ImageIcon className="w-6 h-6 text-primary-700" />
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-[#E2E4DD] bg-white">
+            <Camera className="h-6 w-6 text-[#2F6B3F]" />
           </div>
-          <p className="text-base font-semibold text-slate-900 mb-1">{title}</p>
-          <p className="text-sm text-slate-600 mb-5">{hint}</p>
-          <div className="flex flex-col sm:flex-row gap-2 justify-center items-stretch sm:items-center max-w-md mx-auto w-full">
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="touch-manipulation inline-flex items-center justify-center gap-2 min-h-[44px] px-5 py-2.5 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 transition-colors shadow-sm"
-            >
-              <Upload className="w-4 h-4 shrink-0" />
-              Choose file
-            </button>
+          <p className="mb-5 text-base font-medium text-[#1F2A1F]">{title}</p>
+          {hint && <p className="mb-5 text-sm text-[#6B7168]">{hint}</p>}
+          <div className="mx-auto flex w-full max-w-sm flex-col items-stretch justify-center gap-2 sm:flex-row sm:items-center">
             <button
               type="button"
               onClick={() => cameraInputRef.current?.click()}
-              className="touch-manipulation inline-flex items-center justify-center gap-2 min-h-[44px] px-5 py-2.5 bg-white text-slate-900 border-2 border-slate-200 rounded-xl font-semibold hover:bg-slate-50 transition-colors shadow-sm"
+              className="inline-flex min-h-[48px] touch-manipulation items-center justify-center gap-2 rounded-xl bg-[#2F6B3F] px-5 py-2.5 text-[15px] font-semibold text-white transition-colors hover:bg-[#285A35]"
             >
-              <ImageIcon className="w-4 h-4 shrink-0" />
+              <Camera className="h-4 w-4 shrink-0" />
               Take photo
+            </button>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="inline-flex min-h-[48px] touch-manipulation items-center justify-center gap-2 rounded-xl border border-[#E2E4DD] bg-white px-5 py-2.5 text-[15px] font-semibold text-[#1F2A1F] transition-colors hover:bg-[#F6F7F5]"
+            >
+              <Upload className="h-4 w-4 shrink-0" />
+              Upload photo
             </button>
           </div>
           <input
@@ -111,12 +111,12 @@ export default function ImageUpload({
           />
         </div>
       ) : (
-        <div className="relative group bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
-          <div className="relative w-full h-auto max-h-[520px] flex items-center justify-center bg-slate-50 rounded-xl overflow-hidden border border-slate-200">
+        <div className="rounded-xl border border-[#E2E4DD] bg-[#F6F7F5] p-3">
+          <div className="relative flex h-auto max-h-[420px] w-full items-center justify-center overflow-hidden rounded-lg border border-[#E2E4DD] bg-white">
             <img
               src={imageUrl}
               alt="Crop image preview"
-              className="w-full h-auto max-h-[500px] object-contain rounded-lg"
+              className="h-auto max-h-[400px] w-full rounded-lg object-contain"
               style={{ display: 'block', maxWidth: '100%', height: 'auto' }}
               onError={(e) => {
                 console.error('Image failed to load:', imageUrl)
@@ -124,14 +124,37 @@ export default function ImageUpload({
               }}
             />
           </div>
-          <button
-            type="button"
-            onClick={onClear}
-            className="touch-manipulation absolute top-3 right-3 sm:top-6 sm:right-6 min-h-[44px] min-w-[44px] px-3 py-2 bg-white/90 hover:bg-white text-slate-900 rounded-xl transition-colors shadow-sm border border-slate-200 flex items-center justify-center gap-2 font-semibold text-sm"
-          >
-            <X className="w-4 h-4" />
-            Remove
-          </button>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => cameraInputRef.current?.click()}
+              className="min-h-[44px] rounded-xl bg-[#2F6B3F] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#285A35]"
+            >
+              Retake photo
+            </button>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="min-h-[44px] rounded-xl border border-[#E2E4DD] bg-white px-4 py-2.5 text-sm font-semibold text-[#1F2A1F] transition-colors hover:bg-[#F6F7F5]"
+            >
+              Change photo
+            </button>
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileInput}
+            className="hidden"
+          />
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handleFileInput}
+            className="hidden"
+          />
         </div>
       )}
     </div>
