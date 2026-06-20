@@ -1,0 +1,37 @@
+# CropIntel production stack (single VPS).
+#
+# Differences from docker-compose.yml (dev):
+#   - no repo bind-mount: the image is the artifact (next build baked in)
+#   - supervisord runs both the Next.js server and the Python inference service
+#   - restart policy, healthcheck, and log rotation for unattended operation
+#
+# Usage:
+#   export CROPINTEL_MODELS_URL='https://github.com/HavishNSK/CropIntel/releases/download/v1/cropintel-models-mobile.zip'
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# See docs/DEPLOYMENT.md for the full runbook (reverse proxy, backups, promotion).
+
+services:
+  app:
+    build: .
+    ports:
+      - "3050:3050"
+    environment:
+      - CROPINTEL_MODELS_URL=${CROPINTEL_MODELS_URL:-}
+      - NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-}
+      - CROPINTEL_ADMIN_TOKEN=${CROPINTEL_ADMIN_TOKEN:-}
+    volumes:
+      - ./ml/models:/app/ml/models
+      - ./data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3050/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
