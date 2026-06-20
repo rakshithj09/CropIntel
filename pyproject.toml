@@ -1,0 +1,8 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "needs_model: requires a trained model under ml/models/<crop> (auto-skipped in CI)",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
