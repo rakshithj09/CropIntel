@@ -1,61 +1,80 @@
 # CropIntel
 
-Web app for crop leaf disease hints using EfficientNet → TensorFlow Lite, with a Next.js UI.
+Crop leaf-disease classifier for 5 crops (corn, soybean, wheat, rice, tomato),
+EfficientNetB0 → TensorFlow Lite, served behind a Next.js UI. One Docker
+container runs the web app and a persistent Python inference service together.
 
-## Run without training (no Kaggle)
+## Quick start (run the whole thing)
 
-Trained weights live under `ml/models/` (gitignored). You do **not** need Kaggle or local training if you install models once:
-
-### Option A — Download a release zip (recommended)
-
-1. Get a direct `.zip` URL from a maintainer (e.g. GitHub **Releases**).
-2. From the repo root:
+You do **not** need Kaggle, training, or any model files — the trained models
+(~38 MB) are fetched automatically from the GitHub Release on first start.
 
 ```bash
+git clone https://github.com/HavishNSK/CropIntel.git
+cd CropIntel
+docker compose -f docker-compose.prod.yml up -d --build
+curl -fsS http://localhost:3050/api/health    # {"web":"ok","inference":{"ready":true,...}}
+```
+
+Open [http://localhost:3050](http://localhost:3050). That's it.
+
+Optional environment (drop a `.env` next to the compose file):
+
+```bash
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=...               # only for the outbreak map
+CROPINTEL_ADMIN_TOKEN=$(openssl rand -hex 16)     # only to guard POST /admin/reload
+CROPINTEL_MODELS_URL=...                           # override the default v1 model bundle
+```
+
+For a real domain + TLS, monitoring, and model promotion/rollback, see
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
+## Local development (no Docker)
+
+The web app forwards predictions to the inference service, so run both:
+
+```bash
+# 1) fetch models once (into ml/models/, gitignored)
 pip install -r ml/requirements-inference.txt
-export CROPINTEL_MODELS_URL='https://example.com/cropintel-models.zip'
+export CROPINTEL_MODELS_URL='https://github.com/HavishNSK/CropIntel/releases/download/v1/cropintel-models-mobile.zip'
 python3 -m ml.scripts.fetch_models
+
+# 2) start the inference service (terminal A)
+python3 -m uvicorn ml.serve.inference_app:app --host 127.0.0.1 --port 8000
+
+# 3) start the web app (terminal B)
+npm install && npm run dev
 ```
 
-3. Install Node deps and start the app:
+Open [http://localhost:3050](http://localhost:3050). The UI calls `/api/predict`,
+which forwards to the inference service at `INFERENCE_URL` (default
+`http://127.0.0.1:8000`).
+
+## Train it yourself (needs Kaggle data)
+
+See [ml/README.md](ml/README.md) for the Kaggle API setup and training scripts
+(`pip install -r ml/requirements.txt`). Models are gated on an **external**
+(out-of-distribution) eval before promotion — see
+`ml/scripts/test_external.py` and `ml/scripts/promote_model.py`.
+
+## Maintainer: ship updated models
+
+After training/promoting, repackage and replace the release bundle:
 
 ```bash
-npm install
-npm run dev
+python3 -m ml.scripts.package_models --tflite-only -o cropintel-models-mobile.zip
+gh release upload v1 cropintel-models-mobile.zip -R HavishNSK/CropIntel --clobber
+# on a running server: rm ml/models/.cropintel-fetch-ok && docker compose -f docker-compose.prod.yml restart
 ```
-
-Open [http://localhost:3050](http://localhost:3050). The API runs `scripts/predict.py` with `python3`.
-
-### Option B — Docker
-
-```bash
-export CROPINTEL_MODELS_URL='https://example.com/cropintel-models.zip'   # required for first-time fetch
-docker compose up --build
-```
-
-Models are stored in `./ml/models` on your machine. Set `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` in `.env` if you use the outbreak map.
-
-## Train yourself (needs Kaggle data)
-
-See [ml/README.md](ml/README.md): Kaggle API, `download_datasets.py`, and training scripts. Use `pip install -r ml/requirements.txt` (includes `kaggle`).
-
-## Maintainer: publish models for others
-
-After training, package `ml/models/`:
-
-```bash
-pip install -r ml/requirements.txt   # or minimal env with ml on PYTHONPATH
-python3 -m ml.scripts.package_models -o cropintel-models.zip
-```
-
-Upload `cropintel-models.zip` to a release and share the **direct download URL** as `CROPINTEL_MODELS_URL`.
 
 ## Project layout
 
-- `app/` — Next.js (UI + `/api/predict`)
-- `scripts/predict.py` — inference entrypoint for the API
-- `ml/` — training, `tflite_predictor`, config
+- `app/` — Next.js UI + `/api/predict` (forwards to the inference service) + `/api/health`
+- `ml/serve/inference_app.py` — FastAPI inference service (loads every crop model once)
+- `ml/` — training (`training/`), predictors (`inference/`), config, scripts
+- `docker-compose.prod.yml`, `docker/`, `docs/DEPLOYMENT.md` — production deploy
+- `tests/` — pytest suite (`.github/workflows/ci.yml` runs web + Python checks)
 
 ## License
 
-MIT
+See repository.
