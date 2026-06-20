@@ -1,6 +1,7 @@
 """
 TensorFlow Lite inference module for production use.
 """
+import os
 import numpy as np
 from pathlib import Path
 from typing import Dict, Tuple, Optional
@@ -9,45 +10,12 @@ import tensorflow as tf
 from PIL import Image
 
 from ml.config import MODELS_DIR, CONFIDENCE_THRESHOLD, CROPS
-
-
-def _is_complete_model_version(crop_dir: Path, version_name: str) -> bool:
-    """Weights + class names; skips empty dirs and runs stopped before metadata export."""
-    vd = crop_dir / version_name
-    if not vd.is_dir():
-        return False
-    has_weights = (
-        (vd / "model.tflite").exists()
-        or (vd / "checkpoint.keras").exists()
-        or (vd / "model.onnx").exists()
-    )
-    has_labels = (vd / "metadata.json").exists() or (vd / "label_map.json").exists()
-    return has_weights and has_labels
-
-
-def _version_rank(crop_dir: Path, version_name: str) -> tuple:
-    """
-    Prefer fully finished exports (TFLite + evaluated metrics), then lexical version id
-    (timestamp suffix) so incomplete re-runs do not beat a good checkpoint.
-    ONNX pretrained models rank below trained TFLite/Keras models but above incomplete runs.
-    """
-    vd = crop_dir / version_name
-    has_tflite  = (vd / "model.tflite").exists()
-    has_metrics = (vd / "metrics.json").exists()
-    has_onnx    = (vd / "model.onnx").exists()
-    # (has_tflite, has_metrics, has_onnx, version_name)
-    # Fully trained TFLite+metrics > trained TFLite > pretrained ONNX > bare checkpoint
-    return (has_tflite and has_metrics, has_tflite, has_onnx, version_name)
-
-
-def _iter_usable_versions(crop_dir: Path) -> list[str]:
-    if not crop_dir.is_dir():
-        return []
-    return [
-        d.name
-        for d in crop_dir.iterdir()
-        if d.is_dir() and _is_complete_model_version(crop_dir, d.name)
-    ]
+from ml.inference.versions import (
+    _is_complete_model_version,
+    _version_rank,
+    _iter_usable_versions,
+    resolve_version,
+)
 
 
 class TFLitePredictor:
@@ -67,23 +35,23 @@ class TFLitePredictor:
         self.crop = crop
         self.model_dir = MODELS_DIR / crop
         
-        # Find model version
+        # Find model version (production.json pointer first, else latest complete)
         if version:
             self.version = version
         else:
-            versions = sorted(
-                _iter_usable_versions(self.model_dir),
-                key=lambda n: _version_rank(self.model_dir, n),
-            )
-            if not versions:
+            resolved = resolve_version(self.model_dir)
+            if not resolved:
                 raise ValueError(f"No trained models found for {crop}")
-            self.version = versions[-1]
-        
-        # Prefer Keras model for better accuracy, fallback to TFLite
+            self.version = resolved
+
+        # Prefer Keras model for better accuracy, fallback to TFLite.
+        # CROPINTEL_BACKEND=tflite forces TFLite (servers: ~9 MB vs ~41 MB per
+        # crop kept in memory; parity verified via test_external --backend tflite).
         tflite_path = self.model_dir / self.version / "model.tflite"
         keras_path = self.model_dir / self.version / "checkpoint.keras"
-        
-        if keras_path.exists():
+        force_tflite = os.environ.get("CROPINTEL_BACKEND", "").lower() == "tflite"
+
+        if keras_path.exists() and not (force_tflite and tflite_path.exists()):
             # Use Keras model (more accurate, includes preprocessing layer)
             self.model = tf.keras.models.load_model(keras_path)
             self.use_keras = True
@@ -247,10 +215,5 @@ class TFLitePredictor:
 
 
 def get_latest_model_version(crop: str) -> Optional[str]:
-    """Best usable model version for a crop (prefers evaluated + TFLite export)."""
-    model_dir = MODELS_DIR / crop
-    versions = sorted(
-        _iter_usable_versions(model_dir),
-        key=lambda n: _version_rank(model_dir, n),
-    )
-    return versions[-1] if versions else None
+    """Serving model version for a crop (production pointer, else latest complete)."""
+    return resolve_version(MODELS_DIR / crop)

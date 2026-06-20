@@ -19,14 +19,13 @@ import zipfile
 from pathlib import Path
 
 from ml.config import CROPS, MODELS_DIR
+from ml.inference.versions import resolve_version
 
-# Version dirs look like v1_YYYYMMDD_HHMMSS — sort lexically == chronological.
-def _latest_version_dir(crop_dir: Path):
-    versions = sorted(
-        [d for d in crop_dir.iterdir() if d.is_dir() and d.name.startswith("v")],
-        key=lambda p: p.stat().st_mtime,
-    )
-    return versions[-1] if versions else None
+
+def _serving_version_dir(crop_dir: Path):
+    """The version predictors would serve: production.json pointer, else latest."""
+    version = resolve_version(crop_dir)
+    return crop_dir / version if version else None
 
 
 def main() -> None:
@@ -57,8 +56,8 @@ def main() -> None:
             if args.all_versions:
                 version_dirs = [d for d in crop_dir.iterdir() if d.is_dir()]
             else:
-                latest = _latest_version_dir(crop_dir)
-                version_dirs = [latest] if latest else []
+                serving = _serving_version_dir(crop_dir)
+                version_dirs = [serving] if serving else []
             for vdir in version_dirs:
                 for path in vdir.rglob("*"):
                     if not path.is_file():
@@ -67,6 +66,11 @@ def main() -> None:
                         continue
                     zf.write(path, path.relative_to(MODELS_DIR))
                     n_files += 1
+            # Ship the production pointer so deployed servers pin the same version.
+            pointer = crop_dir / "production.json"
+            if pointer.exists():
+                zf.write(pointer, pointer.relative_to(MODELS_DIR))
+                n_files += 1
             if version_dirs:
                 print(f"  {crop}: packaged {version_dirs[-1].name if version_dirs else '-'}")
 

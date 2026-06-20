@@ -5,32 +5,10 @@ import os
 from pathlib import Path
 from typing import Dict, List
 
-# Optional soybean Healthy-class images (e.g. Mendeley "Soybean Healthy" folder).
-# Set CROPINTEL_SOYBEAN_HEALTHY_DIRS to a pathsep-separated list of folders containing images.
-# If unset, a default under ~/Soybean Healthy and Diseased Images Dataset/Soybean Healthy is used when present.
-
-
-def _soybean_extra_healthy_image_dirs() -> List[Path]:
-    dirs: List[Path] = []
-    seen: set = set()
-    env_raw = os.environ.get("CROPINTEL_SOYBEAN_HEALTHY_DIRS", "")
-    if env_raw.strip():
-        for part in env_raw.split(os.pathsep):
-            p = Path(part.strip()).expanduser()
-            if p.is_dir():
-                key = p.resolve()
-                if key not in seen:
-                    seen.add(key)
-                    dirs.append(p)
-    default = Path.home() / "Soybean Healthy and Diseased Images Dataset" / "Soybean Healthy"
-    if default.is_dir():
-        key = default.resolve()
-        if key not in seen:
-            dirs.append(default)
-    return dirs
-
-
-SOYBEAN_EXTRA_HEALTHY_IMAGE_DIRS = _soybean_extra_healthy_image_dirs()
+# NOTE: the old CROPINTEL_SOYBEAN_HEALTHY_DIRS / Mendeley-Healthy injection was
+# removed. Mixing Healthy from a different source than the disease images made
+# the model detect the image source instead of the disease (fake 100% accuracy).
+# Soybean now trains on a single-acquisition dataset (see CROPS["soybean"]).
 
 # Base paths
 BASE_DIR = Path(__file__).parent
@@ -61,12 +39,17 @@ CROPS = {
         "image_size": (224, 224),
     },
     "soybean": {
-        "dataset_name": "sivm205/soybean-diseased-leaf-dataset",
-        # Top three disease folders by count in sivm205 + Healthy (extras via soybean_healthy / Mendeley)
+        # Single-acquisition dataset (healthy + diseases from one camera program).
+        # The previous mix (sivm205 diseases + Mendeley Healthy) taught the model
+        # to detect the image SOURCE, not the disease — fake 100% test accuracy.
+        "dataset_name": "vaishaligbhujade/soybean-leaf-dataset-for-disease-classification",
         "diseases": [
-            "Powdery Mildew",
-            "Sudden Death Syndrome",
+            "Rust",
+            "Frogeye Leaf Spot",
+            "Bacterial Pustule",
+            "Target Leaf Spot",
             "Yellow Mosaic",
+            "Sudden Death Syndrome",
             "Healthy",
         ],
         "supplemental_dataset_name": None,
@@ -74,11 +57,17 @@ CROPS = {
     },
     "wheat": {
         "dataset_name": "kushagra3204/wheat-plant-diseases",
-        # Top three mapped train folders (Yellow Rust, Brown Rust, Mildew) + Healthy; Stem Rust dropped
+        # Expanded 2026-06-10 from 4 → 8 classes (all ≥576 imgs in the dataset).
+        # The three rusts + mildew + healthy, plus Septoria, Loose Smut, and
+        # Fusarium Head Blight (high-impact field diseases).
         "diseases": [
             "Stripe (Yellow) Rust",
             "Leaf Rust",
+            "Stem Rust",
             "Powdery Mildew",
+            "Septoria",
+            "Loose Smut",
+            "Fusarium Head Blight",
             "Healthy",
         ],
         "supplemental_dataset_name": None,
@@ -86,10 +75,48 @@ CROPS = {
     },
     "rice": {
         "dataset_name": "anshulm257/rice-disease-dataset",
+        # supplemental/: Paddy Doctor field images (imbikramsaha/paddy-doctor) —
+        # added after the v1 model scored 0.6% on external field photos (it
+        # predicted "Healthy" for nearly everything outside the lab-style
+        # training distribution).
         "diseases": [
             "Rice Blast",
             "Bacterial Leaf Blight",
             "Brown Spot",
+            "Healthy",
+        ],
+        # Brown Spot and Rice Blast lesions are visually inseparable on white-
+        # background field leaves (Dhan-Shomadhan), so a 4-class model confidently
+        # mislabels Brown Spot as Blast (29.6% recall). Collapse them into one
+        # honest "fungal leaf lesion" class — both folders still load, but train
+        # under one label. See [[rice-data-lever-exhausted]].
+        "label_aliases": {
+            "Rice Blast": "Blast or Brown Spot",
+            "Brown Spot": "Blast or Brown Spot",
+        },
+        "supplemental_dataset_name": "imbikramsaha/paddy-doctor",
+        "image_size": (224, 224),
+    },
+    "tomato": {
+        # Multi-source (lab + field) — single-style datasets taught rice/soybean
+        # shortcuts, so tomato starts with the diverse mix.
+        "dataset_name": "cookiefinder/tomato-disease-multiple-sources",
+        # Trimmed 2026-06-13 from 11 -> 8 classes. Spider Mites, Target Spot and
+        # Powdery Mildew were dropped: none have PlantDoc field supplemental data
+        # and none have external holdout support (Spider Mites 2 imgs at 0%
+        # recall; the other two have zero external test images), so the 11-class
+        # model couldn't be honestly validated on them and they dragged field
+        # accuracy down. Spider Mites is also a pest, not a pathogen. The kept 8
+        # are real, testable tomato diseases (incl. both blights). See
+        # [[project_tomato_trim]].
+        "diseases": [
+            "Bacterial Spot",
+            "Early Blight",
+            "Late Blight",
+            "Leaf Mold",
+            "Septoria Leaf Spot",
+            "Yellow Leaf Curl Virus",
+            "Mosaic Virus",
             "Healthy",
         ],
         "supplemental_dataset_name": None,

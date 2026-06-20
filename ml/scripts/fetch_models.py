@@ -55,6 +55,8 @@ def merge_models_tree(src: Path, dest: Path) -> None:
         dst_crop.mkdir(parents=True, exist_ok=True)
         for ver in src_crop.iterdir():
             if not ver.is_dir():
+                # crop-root files, e.g. production.json (serving-version pointer)
+                shutil.copy2(ver, dst_crop / ver.name)
                 continue
             dst_ver = dst_crop / ver.name
             if dst_ver.exists():

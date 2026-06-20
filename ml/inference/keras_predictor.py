@@ -10,7 +10,7 @@ import tensorflow as tf
 from PIL import Image
 
 from ml.config import MODELS_DIR, CONFIDENCE_THRESHOLD, CROPS
-from ml.inference.tflite_predictor import _iter_usable_versions, _version_rank
+from ml.inference.versions import resolve_version
 
 
 class KerasPredictor:
@@ -30,17 +30,15 @@ class KerasPredictor:
         self.crop = crop
         self.model_dir = MODELS_DIR / crop
         
-        # Find model version — same completeness ranking as TFLitePredictor
+        # Find model version — same resolution as TFLitePredictor
+        # (production.json pointer first, else latest complete)
         if version:
             self.version = version
         else:
-            versions = sorted(
-                _iter_usable_versions(self.model_dir),
-                key=lambda n: _version_rank(self.model_dir, n),
-            )
-            if not versions:
+            resolved = resolve_version(self.model_dir)
+            if not resolved:
                 raise ValueError(f"No trained models found for {crop}")
-            self.version = versions[-1]
+            self.version = resolved
         
         # Load model
         keras_path = self.model_dir / self.version / "checkpoint.keras"

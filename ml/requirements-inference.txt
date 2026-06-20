@@ -1,4 +1,7 @@
-# Minimal deps for scripts/predict.py + TFLite (no Kaggle / training stack)
+# Minimal deps for the inference service + scripts/predict.py (no Kaggle / training stack)
 tensorflow>=2.15.0
 numpy>=1.24.0
 pillow>=10.0.0
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+python-multipart>=0.0.9

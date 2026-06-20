@@ -28,8 +28,10 @@ Labeled layout example:
     Gray Leaf Spot/ ...
 """
 import argparse
+import json
 import os
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
@@ -44,6 +46,12 @@ from ml.config import CROPS, CONFIDENCE_THRESHOLD  # noqa: E402
 
 IMG_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 
+# Acceptance gate for the "production-ready" stamp (see docs/DEPLOYMENT.md):
+# a model passes when external accuracy meets GATE_MIN_ACCURACY and every
+# evaluated class's recall meets GATE_MIN_CLASS_RECALL.
+GATE_MIN_ACCURACY = 0.85
+GATE_MIN_CLASS_RECALL = 0.60
+
 
 def _norm(s: str) -> str:
     """Normalize a class/folder name for matching."""
@@ -51,7 +59,7 @@ def _norm(s: str) -> str:
 
 
 def _list_images(folder: Path):
-    return sorted(p for p in folder.iterdir()
+    return sorted(p for p in folder.rglob("*")
                   if p.is_file() and p.suffix.lower() in IMG_EXTS)
 
 
@@ -115,24 +123,51 @@ def run_labeled(predictor, root: Path):
 
     if total == 0:
         print("  No readable images found.")
-        return
+        return None
 
     _print_confusion(cm, class_names)
+    per_class = {}
     print("\nPer-class recall (true class correctly predicted):")
     for i, name in enumerate(class_names):
         tot = cm[i].sum()
         rec = cm[i, i] / tot if tot else 0.0
         marker = "   <-- WEAK (<0.6)" if (tot and rec < 0.6) else ""
         print(f"  {name:<26} {cm[i,i]:>4}/{tot:<4} = {rec:6.1%}{marker}")
+        if tot:
+            per_class[name] = {"correct": int(cm[i, i]), "total": int(tot),
+                               "recall": round(rec, 4)}
     acc = cm.trace() / cm.sum()
     confs = np.array(confs)
     print(f"\nOverall external accuracy : {acc:.1%}  ({cm.trace()}/{cm.sum()})")
     print(f"Mean confidence           : {confs.mean():.1%}")
     print(f"Below threshold ({CONFIDENCE_THRESHOLD:.2f})    : {below}/{total} = {below/total:.1%}")
+
+    gate_passed = bool(acc >= GATE_MIN_ACCURACY
+                       and all(c["recall"] >= GATE_MIN_CLASS_RECALL for c in per_class.values()))
+    verdict = "PASS" if gate_passed else "FAIL"
+    print(f"\nProduction gate (acc>={GATE_MIN_ACCURACY:.0%}, "
+          f"class recall>={GATE_MIN_CLASS_RECALL:.0%}): {verdict}")
     print("\nReading the result:")
     print("  * accuracy here ~ in-dataset test acc  -> generalizes well")
     print("  * accuracy here << test acc            -> domain shift / shortcut learning")
     print("  * high accuracy BUT low mean confidence-> shaky; rely on threshold + top-2")
+
+    return {
+        "external_accuracy": round(float(acc), 4),
+        "total_images": int(total),
+        "correct": int(cm.trace()),
+        "per_class": per_class,
+        "mean_confidence": round(float(confs.mean()), 4),
+        "below_threshold_rate": round(below / total, 4),
+        "confidence_threshold": CONFIDENCE_THRESHOLD,
+        "confusion_matrix": cm.tolist(),
+        "class_names": class_names,
+        "gate": {
+            "passed": gate_passed,
+            "min_accuracy": GATE_MIN_ACCURACY,
+            "min_class_recall": GATE_MIN_CLASS_RECALL,
+        },
+    }
 
 
 def run_unlabeled(predictor, path: Path, recursive: bool = False):
@@ -179,6 +214,9 @@ def main():
     ap.add_argument("--backend", default="keras", choices=["keras", "tflite"],
                     help="keras = full model (most accurate); tflite = mobile model")
     ap.add_argument("--version", default=None, help="model version (default: latest)")
+    ap.add_argument("--save-json", action="store_true",
+                    help="write external_eval.json into the model version dir "
+                         "(labeled mode only); used by the promotion gate")
     args = ap.parse_args()
 
     path = Path(args.path).expanduser()
@@ -193,18 +231,39 @@ def main():
     print(f"  threshold: {CONFIDENCE_THRESHOLD}")
 
     # Decide mode: labeled (subfolders match classes) vs unlabeled
+    results = None
     if path.is_dir():
         subdirs = [d for d in path.iterdir() if d.is_dir()]
         norm_classes = {_norm(c) for c in predictor.class_names}
         if any(_norm(d.name) in norm_classes for d in subdirs):
             print("\nMode: LABELED EVAL (subfolders matched to classes)")
-            run_labeled(predictor, path)
+            results = run_labeled(predictor, path)
         else:
             print("\nMode: UNLABELED PREDICT (loose images)")
             run_unlabeled(predictor, path, recursive=bool(subdirs))
     else:
         print("\nMode: SINGLE IMAGE")
         run_unlabeled(predictor, path)
+
+    if args.save_json:
+        if results is None:
+            print("\n[save-json] nothing to save (labeled eval did not run)")
+        else:
+            out_path = predictor.model_dir / predictor.version / "external_eval.json"
+            payload = {
+                "crop": args.crop,
+                "model_version": predictor.version,
+                "backend": args.backend,
+                "eval_path": str(path),
+                "evaluated_at": datetime.now(timezone.utc).isoformat(),
+                **results,
+            }
+            with open(out_path, "w") as f:
+                json.dump(payload, f, indent=2)
+            print(f"\n[save-json] wrote {out_path}")
+            from ml.utils.evaluation import update_metrics_with_external
+            if update_metrics_with_external(args.crop, predictor.version):
+                print(f"[save-json] updated metrics.json with external_accuracy")
     return 0
 
 

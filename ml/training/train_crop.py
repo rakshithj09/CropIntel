@@ -30,16 +30,19 @@ def train_crop_model(
     architecture: str = "EfficientNetB0",
     phase2_lr: float = 1e-4,
     batch_size: int = None,
+    streaming: bool = True,
 ):
     """
     Train a disease classification model for a specific crop.
-    
+
     Args:
         crop: Crop name (corn, soybean, wheat, rice)
         epochs: Number of training epochs (defaults to config)
         fine_tune: Whether to run a second phase with a lower learning rate
         from_scratch: If True, do not load ImageNet weights; train EfficientNet from
             random init (early accuracy starts near chance, not ~90% transfer learning)
+        streaming: Stream batches from disk via tf.data (default). The legacy
+            in-RAM path (~0.6 MB/image as float32) OOMs on 10k+ image datasets.
     """
     if crop not in CROPS:
         raise ValueError(f"Unknown crop: {crop}")
@@ -63,13 +66,17 @@ def train_crop_model(
     model_dir.mkdir(parents=True, exist_ok=True)
     
     # Load dataset
-    print("Loading dataset...")
     loader = CropDatasetLoader(crop)
-    images, labels, class_names = loader.load_dataset()
-    
-    # Create data generators
-    print("Creating data generators...")
-    train_gen, val_gen, y_train = loader.create_data_generators(images, labels)
+    if streaming:
+        print("Indexing dataset (streaming mode)...")
+        paths, labels, class_names = loader.index_dataset()
+        print("Creating tf.data pipelines...")
+        train_gen, val_gen, y_train = loader.create_tf_datasets(paths, labels)
+    else:
+        print("Loading dataset (legacy in-RAM mode)...")
+        images, labels, class_names = loader.load_dataset()
+        print("Creating data generators...")
+        train_gen, val_gen, y_train = loader.create_data_generators(images, labels)
     
     # Calculate class weights to handle imbalance (using training set).
     # A wider cap gives minority classes enough signal without letting a single
@@ -275,6 +282,11 @@ if __name__ == "__main__":
         action="store_true",
         help="Do not load ImageNet weights; train EfficientNet from random init (slower, accuracy rises gradually)",
     )
+    parser.add_argument(
+        "--no-streaming",
+        action="store_true",
+        help="Use the legacy in-RAM data pipeline instead of tf.data streaming",
+    )
 
     args = parser.parse_args()
 
@@ -283,4 +295,5 @@ if __name__ == "__main__":
         epochs=args.epochs,
         fine_tune=not args.no_fine_tune,
         from_scratch=args.from_scratch,
+        streaming=not args.no_streaming,
     )

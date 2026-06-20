@@ -48,6 +48,8 @@ ml/models_pretrained/
 ml/data/
 ml/logs/
 uploads/
+# Runtime prediction audit log (the inference service creates data/ at startup)
+/data/
 *.h5
 *.keras
 *.tflite
@@ -55,3 +57,6 @@ uploads/
 # Training artifacts / release archives (large binaries — distribute out-of-band)
 cropintel-models*.zip
 nohup.out
+
+# TS incremental build cache
+tsconfig.tsbuildinfo

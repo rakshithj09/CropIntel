@@ -14,7 +14,6 @@ from ml.config import (
     DATA_DIR,
     CROPS,
     TRAINING_CONFIG,
-    SOYBEAN_EXTRA_HEALTHY_IMAGE_DIRS,
 )
 
 
@@ -54,6 +53,12 @@ class CropDatasetLoader:
         # helpers use this so printed class names match the trained labels.
         self.class_names = None
     
+    def _merged_label(self, disease: str) -> str:
+        """Map a config disease to its training label, applying any label_aliases
+        (e.g. rice merges Brown Spot + Rice Blast into one class). Folders are still
+        resolved by the original disease name; only the emitted label changes."""
+        return self.config.get("label_aliases", {}).get(disease, disease)
+
     def _label_name(self, idx: int) -> str:
         """Name for an integer label using the authoritative sorted mapping."""
         idx = int(idx)
@@ -77,24 +82,42 @@ class CropDatasetLoader:
             elif disease == "Healthy":
                 possible_names.insert(0, "Healthy Rice Leaf")
         if self.crop == "soybean":
-            if disease == "Powdery Mildew":
-                # dataset folders may use snake_case or old config name
-                possible_names.insert(0, "powdery_mildew")
-                possible_names.insert(1, "powdery mildew")
+            # vaishaligbhujade single-acquisition dataset (see config.py)
+            if disease == "Healthy":
+                # the dataset folder is misspelled "Healty"
+                # NOTE: do NOT map "crestamento" here — it is Portuguese for leaf
+                # scorch (a DISEASE), not healthy. Mapping it poisoned the Healthy class.
+                possible_names.insert(0, "Healty")
+                possible_names.insert(1, "healthy")
+            elif disease == "Rust":
+                possible_names.insert(0, "Soybean Rust")
+                possible_names.insert(1, "ferrugen")  # legacy Brazilian folder name
             elif disease == "Sudden Death Syndrome":
-                # old config had a typo; keep both spellings for compatibility
+                # old dataset had a typo; keep both spellings for compatibility
                 possible_names.insert(0, "Sudden Death Syndrone")
                 possible_names.insert(1, "sudden death syndrome")
                 possible_names.insert(2, "sudden_death_syndrome")
             elif disease == "Yellow Mosaic":
                 possible_names.insert(0, "yellow_mosaic")
                 possible_names.insert(1, "Yellow Mosaic Virus")
-            elif disease == "Healthy":
-                # NOTE: do NOT map "crestamento" here — it is Portuguese for leaf
-                # scorch (a DISEASE), not healthy. Real healthy soybean images come
-                # from supplemental/healthy. Mapping it poisoned the Healthy class.
-                possible_names.insert(0, "healthy")
-                possible_names.insert(1, "Healthy Leaf")
+        if self.crop == "tomato":
+            # cookiefinder folder names (PlantVillage-style); explicit so the
+            # mapping also works on case-sensitive filesystems (Linux/Docker)
+            tomato_aliases = {
+                "Bacterial Spot": ["Bacterial_spot"],
+                "Early Blight": ["Early_blight"],
+                "Late Blight": ["Late_blight"],
+                "Leaf Mold": ["Leaf_Mold"],
+                "Septoria Leaf Spot": ["Septoria_leaf_spot"],
+                "Spider Mites": ["Spider_mites Two-spotted_spider_mite", "Spider_mites"],
+                "Target Spot": ["Target_Spot"],
+                "Yellow Leaf Curl Virus": ["Tomato_Yellow_Leaf_Curl_Virus"],
+                "Mosaic Virus": ["Tomato_mosaic_virus"],
+                "Powdery Mildew": ["powdery_mildew"],
+                "Healthy": ["healthy"],
+            }
+            for alias in reversed(tomato_aliases.get(disease, [])):
+                possible_names.insert(0, alias)
         if self.crop == "wheat":
             if disease == "Leaf Rust":
                 possible_names.insert(0, "Brown Rust")
@@ -105,6 +128,9 @@ class CropDatasetLoader:
                 possible_names.insert(1, "Stripe Rust")
             elif disease == "Powdery Mildew":
                 possible_names.insert(0, "Mildew")
+            elif disease == "Loose Smut":
+                possible_names.insert(0, "Smut")
+            # "Septoria" and "Fusarium Head Blight" match the dataset folders directly
         return possible_names
     
     def _resolve_class_folder(self, root: Path, disease: str) -> Optional[Path]:
@@ -343,7 +369,7 @@ class CropDatasetLoader:
             print(f"    [WARN] no base folder for: {missing} (may come from supplemental)")
 
         for disease, folder_path in disease_folders.items():
-            n = self._append_images_from_folder(folder_path, disease, images, labels, class_names)
+            n = self._append_images_from_folder(folder_path, self._merged_label(disease), images, labels, class_names)
             if n == 0:
                 print(f"Warning: No images loaded from {folder_path}")
         
@@ -355,7 +381,7 @@ class CropDatasetLoader:
                 if sup_folder is None:
                     continue
                 n = self._append_images_from_folder(
-                    sup_folder, disease, images, labels, class_names
+                    sup_folder, self._merged_label(disease), images, labels, class_names
                 )
                 sup_added += n
             if sup_added:
@@ -363,70 +389,11 @@ class CropDatasetLoader:
                     f"Merged {sup_added} supplemental images from {supplemental_root}"
                 )
         
-        # Optional: include extra healthy soybean images (Mendeley "Soybean Healthy", etc.).
-        # Runs even when the Kaggle layout has no in-repo Healthy folder — those images
-        # still map to label "Healthy".
-        # Drop-in under ml/data:
-        # - ml/data/soybean_mendeley/Healthy
-        # - ml/data/soybean_healthy/Healthy
-        # - ml/data/soybean_extra/Healthy
-        # Plus SOYBEAN_EXTRA_HEALTHY_IMAGE_DIRS in ml/config.py (default ~/.../Soybean Healthy).
-        if self.crop == "soybean" and "Healthy" in self.diseases:
-            extra_roots = [
-                DATA_DIR / "soybean_mendeley",
-                DATA_DIR / "soybean_healthy",
-                DATA_DIR / "soybean_extra",
-            ]
-            extra_added = 0
-            for root in extra_roots:
-                if not root.exists() or not root.is_dir():
-                    continue
-                healthy_candidates = [
-                    p for p in root.iterdir()
-                    if p.is_dir() and "healthy" in p.name.lower()
-                ]
-                for healthy_dir in healthy_candidates:
-                    extra_files = self._get_image_files(healthy_dir)
-                    if not extra_files:
-                        continue
-                    print(f"Including {len(extra_files)} extra soybean healthy images from {healthy_dir}")
-                    for img_path in extra_files:
-                        try:
-                            img = Image.open(img_path).convert("RGB")
-                            img = img.resize(self.image_size)
-                            img_array = np.array(img, dtype=np.float32) / 255.0
-                            images.append(img_array)
-                            labels.append("Healthy")
-                            class_names.append("Healthy")
-                            extra_added += 1
-                        except Exception as e:
-                            print(f"Error loading {img_path}: {e}")
-                            continue
-            # Explicit healthy folders (env CROPINTEL_SOYBEAN_HEALTHY_DIRS and/or default ~/.../Soybean Healthy)
-            for healthy_dir in SOYBEAN_EXTRA_HEALTHY_IMAGE_DIRS:
-                if not healthy_dir.is_dir():
-                    continue
-                extra_files = self._get_image_files(healthy_dir)
-                if not extra_files:
-                    continue
-                print(
-                    f"Including {len(extra_files)} extra soybean healthy images from {healthy_dir}"
-                )
-                for img_path in extra_files:
-                    try:
-                        img = Image.open(img_path).convert("RGB")
-                        img = img.resize(self.image_size)
-                        img_array = np.array(img, dtype=np.float32) / 255.0
-                        images.append(img_array)
-                        labels.append("Healthy")
-                        class_names.append("Healthy")
-                        extra_added += 1
-                    except Exception as e:
-                        print(f"Error loading {img_path}: {e}")
-                        continue
-            if extra_added > 0:
-                print(f"Total supplemental healthy soybean images: {extra_added}")
-        
+        # NOTE: the old soybean extra-Healthy injection (Mendeley etc.) was removed.
+        # Healthy images from a different acquisition than the disease classes let
+        # the model classify the SOURCE instead of the disease (fake 100% accuracy).
+        # All soybean classes, including Healthy, now come from one dataset.
+
         if not images:
             raise ValueError(f"No images loaded from {self.data_dir}")
         
@@ -590,6 +557,256 @@ class CropDatasetLoader:
     
     def get_test_set(self) -> Tuple[np.ndarray, np.ndarray]:
         """Get the held-out test set."""
+        if hasattr(self, 'test_paths'):
+            # Streaming mode: materialize the (small) test split on demand.
+            X, kept_y = [], []
+            for p, lbl in zip(self.test_paths, self.y_test):
+                try:
+                    img = Image.open(p).convert("RGB").resize(self.image_size)
+                except Exception as e:
+                    print(f"  [SKIP corrupt test image] {p}: {e}")
+                    continue
+                X.append(np.array(img, dtype=np.float32) / 255.0)
+                kept_y.append(lbl)
+            return np.array(X, dtype=np.float32), np.array(kept_y)
         if not hasattr(self, 'X_test'):
             raise ValueError("Test set not created. Call create_data_generators first.")
         return self.X_test, self.y_test
+
+    # ── Streaming (tf.data) pipeline ─────────────────────────────────────────
+    # The legacy load_dataset()/create_data_generators() path holds every image
+    # in RAM as float32 (~0.6 MB per 224×224 image) — fine for small crops,
+    # OOM for 10k+ image datasets on an 8 GB machine. The methods below mirror
+    # the same semantics (capping, stratified split, oversampling, [0,1] inputs,
+    # AUG CHECK) but stream pixels from disk per batch.
+
+    def index_dataset(self) -> Tuple[np.ndarray, np.ndarray, List[str]]:
+        """Like load_dataset() but returns file PATHS instead of pixels.
+
+        Corrupt/unreadable files are filtered here (header verify) so the
+        tf.data pipeline never hits a decode error mid-epoch.
+        """
+        paths: List[str] = []
+        labels: List[str] = []
+        self.corrupt_count = 0
+
+        def _collect(folder_path: Path, disease: str) -> int:
+            n = 0
+            for img_path in self._get_image_files(folder_path):
+                try:
+                    with Image.open(img_path) as im:
+                        im.verify()  # header check only — cheap
+                except Exception as e:
+                    self.corrupt_count += 1
+                    print(f"  [SKIP corrupt] {img_path}: {e}")
+                    continue
+                paths.append(str(img_path))
+                labels.append(disease)
+                n += 1
+            return n
+
+        disease_folders: Dict[str, Path] = {}
+        for disease in self.diseases:
+            folder_path = self._resolve_class_folder(self.data_dir, disease)
+            if folder_path is not None:
+                disease_folders[disease] = folder_path
+
+        if not disease_folders:
+            raise ValueError(f"No disease folders found in {self.data_dir}")
+
+        print(f"\n  [FOLDER MAP] {self.crop}: config disease label → resolved folder")
+        for disease in self.diseases:
+            resolved = disease_folders.get(disease)
+            status = str(resolved.name) if resolved is not None else "*** NOT FOUND ***"
+            print(f"    '{disease}'  →  {status}")
+        missing = [d for d in self.diseases if d not in disease_folders]
+        if missing:
+            print(f"    [WARN] no base folder for: {missing} (may come from supplemental)")
+
+        for disease, folder_path in disease_folders.items():
+            if _collect(folder_path, self._merged_label(disease)) == 0:
+                print(f"Warning: No images indexed from {folder_path}")
+
+        supplemental_root = DATA_DIR / self.crop / "supplemental"
+        if supplemental_root.is_dir():
+            sup_added = 0
+            for disease in self.diseases:
+                sup_folder = self._resolve_class_folder(supplemental_root, disease)
+                if sup_folder is None:
+                    continue
+                sup_added += _collect(sup_folder, self._merged_label(disease))
+            if sup_added:
+                print(f"Merged {sup_added} supplemental images from {supplemental_root}")
+
+        if not paths:
+            raise ValueError(f"No images indexed from {self.data_dir}")
+
+        unique_diseases = sorted(set(labels))
+        disease_to_idx = {d: i for i, d in enumerate(unique_diseases)}
+        label_indices = np.array([disease_to_idx[l] for l in labels])
+        path_arr = np.array(paths)
+        self.class_names = unique_diseases
+
+        # Shuffle to prevent class-ordering bias (same seed as load_dataset).
+        np.random.seed(42)
+        order = np.random.permutation(len(path_arr))
+        path_arr, label_indices = path_arr[order], label_indices[order]
+
+        print(f"Indexed {len(path_arr)} images for {self.crop} (streaming mode)")
+        if self.corrupt_count:
+            print(f"  [CORRUPT] skipped {self.corrupt_count} unreadable images")
+        print(f"Diseases: {unique_diseases}")
+        print(f"Class distribution: {pd.Series([unique_diseases[i] for i in label_indices]).value_counts().to_dict()}")
+        return path_arr, label_indices, unique_diseases
+
+    def _oversample_paths(self, paths: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """Path-list analogue of _oversample_minority_classes.
+
+        Duplicates minority-class paths up to min(median, 2× original); the
+        per-epoch random augmentation in the tf.data pipeline makes each
+        duplicate a different training image every epoch.
+        """
+        unique, counts = np.unique(y, return_counts=True)
+        max_count, min_count = int(np.max(counts)), int(np.min(counts))
+        if max_count / min_count <= 2.5:
+            print(f"  No oversampling needed (imbalance ratio {max_count/min_count:.1f}× ≤ 2.5×).")
+            return paths, y
+        target = int(min(np.median(counts), min_count * 2))
+        extra_p, extra_y = [], []
+        for label, count in zip(unique, counts):
+            if int(count) >= target:
+                continue
+            needed = target - int(count)
+            cls_idx = np.where(y == label)[0]
+            print(f"  Oversampling class {int(label)} ({self._label_name(label)}): "
+                  f"{int(count)} → {target} (+{needed} duplicated paths)")
+            chosen = np.random.choice(cls_idx, size=needed, replace=True)
+            extra_p.extend(paths[chosen])
+            extra_y.extend([label] * needed)
+        if not extra_p:
+            return paths, y
+        paths_out = np.concatenate([paths, np.array(extra_p)])
+        y_out = np.concatenate([y, np.array(extra_y, dtype=y.dtype)])
+        rng = np.random.default_rng()
+        order = rng.permutation(len(paths_out))
+        return paths_out[order], y_out[order]
+
+    def create_tf_datasets(
+        self,
+        paths: np.ndarray,
+        labels: np.ndarray,
+        augment: bool = True,
+    ) -> Tuple[tf.data.Dataset, tf.data.Dataset, np.ndarray]:
+        """Streaming replacement for create_data_generators().
+
+        Same capping/split/oversampling semantics; images are decoded per batch
+        from disk. Outputs stay in [0,1] (the model's Rescaling layer expects
+        this) and brightness augmentation remains BANNED — see the
+        brightness_range bug notes in create_data_generators().
+        """
+        print("\nCapping dominant classes before split (streaming)...")
+        paths, labels = self._cap_dominant_class(paths, labels)
+        print(f"Dataset after capping: {len(paths)} images")
+
+        label_counts = np.bincount(labels.astype(int))
+        can_stratify = np.all(label_counts[label_counts > 0] >= 2)
+        p_train, p_temp, y_train, y_temp = train_test_split(
+            paths, labels,
+            test_size=TRAINING_CONFIG["test_split"] + TRAINING_CONFIG["validation_split"],
+            stratify=labels if can_stratify else None,
+            random_state=42,
+        )
+        val_size = TRAINING_CONFIG["validation_split"] / (
+            TRAINING_CONFIG["test_split"] + TRAINING_CONFIG["validation_split"]
+        )
+        temp_counts = np.bincount(y_temp.astype(int))
+        can_stratify2 = np.all(temp_counts[temp_counts > 0] >= 2)
+        p_val, p_test, y_val, y_test = train_test_split(
+            p_temp, y_temp,
+            test_size=1 - val_size,
+            stratify=y_temp if can_stratify2 else None,
+            random_state=42,
+        )
+
+        self.test_paths = p_test
+        self.y_test = y_test
+
+        num_classes = len(np.unique(labels))
+        print("\n  [SPLIT DIST] per-class counts (train / val / test) and val-share:")
+        tr = np.bincount(y_train.astype(int), minlength=num_classes)
+        vl = np.bincount(y_val.astype(int), minlength=num_classes)
+        te = np.bincount(y_test.astype(int), minlength=num_classes)
+        for c in range(num_classes):
+            total_c = tr[c] + vl[c] + te[c]
+            val_share = (vl[c] / total_c) if total_c else 0.0
+            flag = "  <<< VAL >40% — SKEWED SPLIT!" if val_share > 0.40 else ""
+            print(f"    class {c}: train={tr[c]:5d}  val={vl[c]:5d}  test={te[c]:5d}  "
+                  f"val_share={val_share:.1%}{flag}")
+
+        print("\nOversampling minority classes in training set (path duplication)...")
+        p_train, y_train = self._oversample_paths(p_train, y_train)
+        print(f"Training set after oversampling: {len(p_train)} images\n")
+        self.y_train = y_train
+
+        batch_size = TRAINING_CONFIG["batch_size"]
+        h, w = self.image_size
+
+        def _decode(path, label):
+            raw = tf.io.read_file(path)
+            img = tf.image.decode_image(raw, channels=3, expand_animations=False)
+            img.set_shape([None, None, 3])
+            img = tf.image.resize(img, [h, w])
+            img = tf.cast(img, tf.float32) / 255.0  # model expects [0,1]
+            return img, label
+
+        # Geometric augmentation equivalent to the ImageDataGenerator config
+        # (rotation ±30°, shift 0.2, zoom 0.3, both flips; shear omitted —
+        # not available as a Keras layer). NO brightness ops: they were the
+        # root cause of the all-black-batch training collapse.
+        aug_layers = tf.keras.Sequential([
+            tf.keras.layers.RandomFlip("horizontal_and_vertical"),
+            tf.keras.layers.RandomRotation(30 / 360, fill_mode="nearest"),
+            tf.keras.layers.RandomTranslation(0.2, 0.2, fill_mode="nearest"),
+            tf.keras.layers.RandomZoom(0.3, fill_mode="nearest"),
+        ])
+
+        y_train_cat = tf.keras.utils.to_categorical(y_train, num_classes=num_classes)
+        y_val_cat = tf.keras.utils.to_categorical(y_val, num_classes=num_classes)
+
+        train_ds = (
+            tf.data.Dataset.from_tensor_slices((p_train, y_train_cat))
+            .shuffle(len(p_train), seed=42, reshuffle_each_iteration=True)
+            .map(_decode, num_parallel_calls=tf.data.AUTOTUNE)
+            .batch(batch_size)
+        )
+        if augment and TRAINING_CONFIG["augmentation"]:
+            train_ds = train_ds.map(
+                lambda x, y: (aug_layers(x, training=True), y),
+                num_parallel_calls=tf.data.AUTOTUNE,
+            )
+        train_ds = train_ds.prefetch(tf.data.AUTOTUNE)
+
+        val_ds = (
+            tf.data.Dataset.from_tensor_slices((p_val, y_val_cat))
+            .map(_decode, num_parallel_calls=tf.data.AUTOTUNE)
+            .batch(batch_size)
+            .prefetch(tf.data.AUTOTUNE)
+        )
+
+        # AUG CHECK (ported from create_data_generators): a destroyed batch
+        # must abort the run before wasting hours of training.
+        probe_x, _ = next(iter(train_ds))
+        bmin = float(tf.reduce_min(probe_x))
+        bmax = float(tf.reduce_max(probe_x))
+        bmean = float(tf.reduce_mean(probe_x))
+        print(f"  [AUG CHECK] train batch range=[{bmin:.4f},{bmax:.4f}] mean={bmean:.4f}")
+        if bmax <= 1e-6:
+            raise RuntimeError(
+                "Augmented training batch is all-zero — augmentation is destroying "
+                "images (see brightness_range bug). Aborting before wasting a run.")
+        if bmax > 2.0:
+            raise RuntimeError(
+                f"Augmented training batch exceeds [0,1] (max={bmax:.2f}); "
+                "an augmentation is rescaling to [0,255] and will break preprocessing.")
+
+        return train_ds, val_ds, y_train

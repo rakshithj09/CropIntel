@@ -13,16 +13,18 @@ COPY package.json package-lock.json* ./
 RUN npm ci
 
 COPY ml/requirements-inference.txt ml/
-RUN pip install --no-cache-dir -r ml/requirements-inference.txt
+RUN pip install --no-cache-dir -r ml/requirements-inference.txt supervisor
 
 COPY . .
 
+RUN npm run build
+
 RUN chmod +x docker/entrypoint.sh
 
-ENV NODE_ENV=development
+ENV NODE_ENV=production
 ENV PYTHONUNBUFFERED=1
 
 EXPOSE 3050
 
 ENTRYPOINT ["/app/docker/entrypoint.sh"]
-CMD ["npx", "next", "dev", "-p", "3050", "-H", "0.0.0.0"]
+CMD ["supervisord", "-c", "/app/docker/supervisord.conf"]

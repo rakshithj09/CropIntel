@@ -82,17 +82,59 @@ def evaluate_model(
         "classification_report": report
     }
     
+    # External eval (out-of-training-distribution) results, if present.
+    # Written by `python -m ml.scripts.test_external --crop <crop> --save-json`;
+    # the promotion gate reads metrics.json, so surface the headline numbers here.
+    metrics["external_accuracy"] = None
+    external = load_external_eval(crop, version)
+    if external is not None:
+        metrics["external_accuracy"] = external.get("external_accuracy")
+        metrics["external_gate_passed"] = external.get("gate", {}).get("passed")
+
     # Save metrics
     model_dir = MODELS_DIR / crop / version
     model_dir.mkdir(parents=True, exist_ok=True)
-    
+
     with open(model_dir / "metrics.json", "w") as f:
         json.dump(metrics, f, indent=2)
-    
+
     # Plot confusion matrix
     plot_confusion_matrix(cm, class_names, crop, version)
-    
+
     return metrics
+
+
+def load_external_eval(crop: str, version: str) -> Dict | None:
+    """Load external_eval.json for a model version, or None if absent/unreadable."""
+    path = MODELS_DIR / crop / version / "external_eval.json"
+    if not path.exists():
+        return None
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def update_metrics_with_external(crop: str, version: str) -> bool:
+    """Fold external_eval.json results into an existing metrics.json.
+
+    Returns True if metrics.json was updated. Used after running test_external
+    --save-json on an already-trained version (evaluate_model only runs at
+    training time).
+    """
+    model_dir = MODELS_DIR / crop / version
+    metrics_path = model_dir / "metrics.json"
+    external = load_external_eval(crop, version)
+    if external is None or not metrics_path.exists():
+        return False
+    with open(metrics_path) as f:
+        metrics = json.load(f)
+    metrics["external_accuracy"] = external.get("external_accuracy")
+    metrics["external_gate_passed"] = external.get("gate", {}).get("passed")
+    with open(metrics_path, "w") as f:
+        json.dump(metrics, f, indent=2)
+    return True
 
 
 def plot_confusion_matrix(

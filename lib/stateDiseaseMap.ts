@@ -70,14 +70,16 @@ export const CROP_STATE_DISEASES: Record<string, Record<string, string[]>> = {
     CA: ['Stripe (Yellow) Rust', 'Leaf Rust', 'Powdery Mildew', 'Healthy'],
     WA: ['Stripe (Yellow) Rust', 'Leaf Rust', 'Powdery Mildew', 'Healthy'],
   },
+  // Model collapses Rice Blast + Brown Spot into one 'Blast or Brown Spot'
+  // class (their lesions are visually inseparable), so labels match it here.
   rice: {
-    AR: ['Rice Blast', 'Bacterial Leaf Blight', 'Brown Spot', 'Healthy'],
-    LA: ['Rice Blast', 'Bacterial Leaf Blight', 'Brown Spot', 'Healthy'],
-    MS: ['Rice Blast', 'Bacterial Leaf Blight', 'Brown Spot', 'Healthy'],
-    MO: ['Rice Blast', 'Bacterial Leaf Blight', 'Brown Spot', 'Healthy'],
-    CA: ['Rice Blast', 'Brown Spot', 'Healthy'],
-    TX: ['Rice Blast', 'Bacterial Leaf Blight', 'Brown Spot', 'Healthy'],
-    FL: ['Rice Blast', 'Brown Spot', 'Healthy'],
+    AR: ['Blast or Brown Spot', 'Bacterial Leaf Blight', 'Healthy'],
+    LA: ['Blast or Brown Spot', 'Bacterial Leaf Blight', 'Healthy'],
+    MS: ['Blast or Brown Spot', 'Bacterial Leaf Blight', 'Healthy'],
+    MO: ['Blast or Brown Spot', 'Bacterial Leaf Blight', 'Healthy'],
+    CA: ['Blast or Brown Spot', 'Healthy'],
+    TX: ['Blast or Brown Spot', 'Bacterial Leaf Blight', 'Healthy'],
+    FL: ['Blast or Brown Spot', 'Healthy'],
   },
 }
 
