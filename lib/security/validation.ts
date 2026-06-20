@@ -23,14 +23,14 @@ import { z } from 'zod'
  * Valid crop types (whitelist approach)
  * Prevents injection attacks by only allowing known values
  */
-const VALID_CROPS = ['corn', 'rice', 'soybean', 'wheat'] as const
+const VALID_CROPS = ['corn', 'rice', 'soybean', 'wheat', 'tomato'] as const
 
 /**
  * Crop type schema
  * Validates crop parameter with strict whitelist
  */
 export const cropSchema = z.enum(VALID_CROPS, {
-  message: 'Invalid crop type. Must be one of: corn, rice, soybean, wheat',
+  message: 'Invalid crop type. Must be one of: corn, rice, soybean, wheat, tomato',
 })
 
 /**

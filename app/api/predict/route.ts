@@ -1,31 +1,29 @@
 /**
  * Prediction API Route
- * 
+ *
  * Secure API endpoint for crop disease prediction.
  * Implements comprehensive security measures following OWASP best practices.
- * 
+ *
  * Security Features:
  * - Rate limiting (IP-based)
  * - Input validation and sanitization
  * - File upload security (size limits, type validation)
- * - Path traversal prevention
  * - Security headers
  * - Secure error handling
- * 
+ *
  * OWASP Compliance:
  * - A01:2021 (Broken Access Control) - Rate limiting
  * - A03:2021 (Injection) - Input validation
  * - A05:2021 (Security Misconfiguration) - Security headers
  * - A07:2021 (Identification and Authentication Failures) - Input validation
+ *
+ * Inference is served by the persistent Python service (ml/serve/inference_app.py)
+ * over localhost HTTP — models stay loaded in memory between requests.
  */
 
-import { NextRequest, NextResponse } from 'next/server'
-import { spawn } from 'child_process'
-import { writeFile, unlink } from 'fs/promises'
-import { join } from 'path'
-import { tmpdir } from 'os'
+import { NextRequest } from 'next/server'
 import { rateLimit, getRateLimitHeaders } from '@/lib/security/rateLimiter'
-import { validatePredictionRequest, sanitizeFilename } from '@/lib/security/validation'
+import { validatePredictionRequest } from '@/lib/security/validation'
 import { createSecureResponse, addSecurityHeaders } from '@/lib/security/headers'
 import { ZodError } from 'zod'
 
@@ -47,10 +45,16 @@ const ALLOWED_MIME_TYPES = [
   'image/gif',
 ]
 
+/** Base URL of the Python inference service (never exposed publicly). */
+const INFERENCE_URL = process.env.INFERENCE_URL || 'http://127.0.0.1:8000'
+
+/** Upstream timeout — model inference is fast; this guards a hung service. */
+const INFERENCE_TIMEOUT_MS = 30_000
+
 /**
  * Validate file content by checking MIME type
  * Additional security layer beyond client-side validation
- * 
+ *
  * @param file - File object to validate
  * @returns true if file is valid image, false otherwise
  */
@@ -87,7 +91,7 @@ export async function POST(request: NextRequest) {
     // Parse and validate form data using schema-based validation
     // OWASP: Prevents injection attacks via strict validation
     const formData = await request.formData()
-    
+
     let validatedData
     try {
       validatedData = await validatePredictionRequest(formData)
@@ -117,125 +121,86 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // ========== SECURE FILE HANDLING ==========
-    // Sanitize filename to prevent path traversal attacks
-    // OWASP: Prevents A01:2021 (Broken Access Control)
-    const sanitizedFilename = sanitizeFilename(image.name)
-    
-    // Save uploaded file temporarily in system temp directory
-    // Use timestamp and sanitized filename to prevent collisions
-    const bytes = await image.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-    const tempPath = join(tmpdir(), `cropintel-${Date.now()}-${sanitizedFilename}`)
-    
-    // Write file to temporary location
-    await writeFile(tempPath, buffer)
+    // ========== INFERENCE SERVICE CALL ==========
+    // Forward the validated upload to the persistent inference service.
+    const upstreamForm = new FormData()
+    upstreamForm.append('image', image)
+    upstreamForm.append('crop', crop)
 
+    let upstream: Response
     try {
-      // ========== SECURE PROCESS EXECUTION ==========
-      // Call Python prediction script with validated inputs
-      // Process runs in isolated child process (inherent security)
-      const result = await runPrediction(tempPath, crop)
-      
-      // ========== SUCCESS RESPONSE ==========
-      // Return result with security headers and rate limit info
-      const response = createSecureResponse(result, 200)
-      
-      // Add rate limit headers to successful response
-      const rateLimitHeaders = getRateLimitHeaders(request, '/api/predict')
-      Object.entries(rateLimitHeaders).forEach(([key, value]) => {
-        response.headers.set(key, value)
+      upstream = await fetch(`${INFERENCE_URL}/predict`, {
+        method: 'POST',
+        body: upstreamForm,
+        signal: AbortSignal.timeout(INFERENCE_TIMEOUT_MS),
       })
-      
-      return response
-    } finally {
-      // ========== CLEANUP ==========
-      // Always clean up temporary files, even on error
-      // OWASP: Fail securely by ensuring cleanup
-      await unlink(tempPath).catch((err) => {
-        // Log cleanup errors but don't fail the request
-        console.error('Failed to cleanup temp file:', err)
-      })
+    } catch (error) {
+      // Service down or timed out — operators should check the inference process.
+      console.error('Inference service unreachable:', error)
+      return createSecureResponse(
+        { error: 'Prediction service unavailable. Please try again shortly.' },
+        503
+      )
     }
+
+    let result: any
+    try {
+      result = await upstream.json()
+    } catch {
+      console.error('Inference service returned non-JSON, status:', upstream.status)
+      return createSecureResponse(
+        { error: 'Prediction failed. Please try again later.' },
+        500
+      )
+    }
+
+    if (!upstream.ok) {
+      const errorMessage: string = result?.error || 'Prediction failed'
+      const msg = errorMessage.toLowerCase()
+
+      // User-actionable image problems (quality checks) — pass through as-is.
+      if (
+        msg.includes('retake the image') ||
+        msg.includes('clear plant leaf') ||
+        msg.includes('appears blurry')
+      ) {
+        return createSecureResponse({ error: errorMessage }, 400)
+      }
+
+      // Model-not-ready — tell operators to train/fetch models.
+      if (msg.includes('no trained models found') || msg.includes('model not found')) {
+        return createSecureResponse(
+          { error: 'Model not ready. Please train or install a model for this crop before running analysis.' },
+          503
+        )
+      }
+
+      console.error('Unhandled inference error:', upstream.status, errorMessage)
+      return createSecureResponse(
+        { error: 'Prediction failed. Please try again later.' },
+        upstream.status >= 500 ? 500 : 400
+      )
+    }
+
+    // ========== SUCCESS RESPONSE ==========
+    // Return result with security headers and rate limit info
+    const response = createSecureResponse(result, 200)
+
+    // Add rate limit headers to successful response
+    const rateLimitHeaders = getRateLimitHeaders(request, '/api/predict')
+    Object.entries(rateLimitHeaders).forEach(([key, value]) => {
+      response.headers.set(key, value)
+    })
+
+    return response
   } catch (error: any) {
     // ========== ERROR HANDLING ==========
     // Log detailed error server-side but return generic message to client
     // OWASP: Prevent information disclosure
     console.error('Prediction error:', error)
-    
-    // Surface safe, user-actionable errors from inference.
-    const errorMessage = error instanceof Error ? error.message : 'Prediction failed'
-    const msg = errorMessage.toLowerCase()
-    if (
-      msg.includes('retake the image') ||
-      msg.includes('clear plant leaf') ||
-      msg.includes('appears blurry')
-    ) {
-      return createSecureResponse({ error: errorMessage }, 400)
-    }
-
-    // Surface model-not-ready errors so operators know to train/fetch models.
-    if (msg.includes('no trained models found') || msg.includes('model not found')) {
-      return createSecureResponse(
-        { error: 'Model not ready. Please train or install a model for this crop before running analysis.' },
-        503
-      )
-    }
-
-    console.error('Unhandled prediction error:', errorMessage)
     return createSecureResponse(
       { error: 'Prediction failed. Please try again later.' },
       500
     )
   }
-}
-
-function runPrediction(imagePath: string, crop: string): Promise<any> {
-  return new Promise((resolve, reject) => {
-    const scriptPath = join(process.cwd(), 'scripts', 'predict.py')
-    // Use the interpreter that has TensorFlow installed. The default `python3`
-    // on this machine is a venv without TF; set CROPINTEL_PYTHON to the conda
-    // env (e.g. .conda-py311/bin/python) so inference works.
-    const pythonBin = process.env.CROPINTEL_PYTHON || 'python3'
-    const pythonProcess = spawn(pythonBin, [scriptPath, imagePath, crop])
-
-    let stdout = ''
-    let stderr = ''
-
-    pythonProcess.stdout.on('data', (data) => {
-      stdout += data.toString()
-    })
-
-    pythonProcess.stderr.on('data', (data) => {
-      stderr += data.toString()
-    })
-
-    pythonProcess.on('close', (code) => {
-      if (code !== 0) {
-        // TF may write warnings to stderr before our JSON error line.
-        // Find the last line that looks like JSON rather than parsing the whole blob.
-        const stderrLines = stderr.split('\n').map((l) => l.trim()).filter(Boolean)
-        const jsonLine = stderrLines.slice().reverse().find((l) => l.startsWith('{')) ?? ''
-        try {
-          const errorData = JSON.parse(jsonLine)
-          reject(new Error(errorData.error || stderrLines.at(-1) || `Process exited with code ${code}`))
-        } catch {
-          reject(new Error(stderrLines.at(-1) || `Process exited with code ${code}`))
-        }
-        return
-      }
-
-      try {
-        const result = JSON.parse(stdout)
-        // Check if result has error field
-        if (result.error) {
-          reject(new Error(result.error))
-          return
-        }
-        resolve(result)
-      } catch (error) {
-        reject(new Error(`Failed to parse prediction result. stdout: ${stdout.substring(0, 200)}`))
-      }
-    })
-  })
 }
