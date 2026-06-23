@@ -6,7 +6,7 @@
 #   - restart policy, healthcheck, and log rotation for unattended operation
 #
 # Usage:
-#   export CROPINTEL_MODELS_URL='https://github.com/HavishNSK/CropIntel/releases/download/v1/cropintel-models-mobile.zip'
+#   export CROPINTEL_MODELS_URL='https://github.com/rakshithj09/CropIntel/releases/download/v1/cropintel-models-mobile.zip'
 #   docker compose -f docker-compose.prod.yml up -d --build
 #
 # See docs/DEPLOYMENT.md for the full runbook (reverse proxy, backups, promotion).
@@ -22,7 +22,7 @@ services:
     ports:
       - "3050:3050"
     environment:
-      - CROPINTEL_MODELS_URL=${CROPINTEL_MODELS_URL:-https://github.com/HavishNSK/CropIntel/releases/download/v1/cropintel-models-mobile.zip}
+      - CROPINTEL_MODELS_URL=${CROPINTEL_MODELS_URL:-https://github.com/rakshithj09/CropIntel/releases/download/v1/cropintel-models-mobile.zip}
       - NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-}
       - CROPINTEL_ADMIN_TOKEN=${CROPINTEL_ADMIN_TOKEN:-}
     volumes:

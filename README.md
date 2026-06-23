@@ -1,3 +1,16 @@
+---
+title: CropIntel
+emoji: 🌾
+colorFrom: green
+colorTo: blue
+sdk: docker
+app_port: 3050
+pinned: false
+---
+
+<!-- The YAML block above configures the Hugging Face Space (Docker SDK,
+     public port 3050). Required by HF; ignored by GitHub. See docs/DEPLOYMENT.md. -->
+
 # CropIntel
 
 Crop leaf-disease classifier for 5 crops (corn, soybean, wheat, rice, tomato),
@@ -10,7 +23,7 @@ You do **not** need Kaggle, training, or any model files — the trained models
 (~38 MB) are fetched automatically from the GitHub Release on first start.
 
 ```bash
-git clone https://github.com/HavishNSK/CropIntel.git
+git clone https://github.com/rakshithj09/CropIntel.git
 cd CropIntel
 docker compose -f docker-compose.prod.yml up -d --build
 curl -fsS http://localhost:3050/api/health    # {"web":"ok","inference":{"ready":true,...}}
@@ -36,7 +49,7 @@ The web app forwards predictions to the inference service, so run both:
 ```bash
 # 1) fetch models once (into ml/models/, gitignored)
 pip install -r ml/requirements-inference.txt
-export CROPINTEL_MODELS_URL='https://github.com/HavishNSK/CropIntel/releases/download/v1/cropintel-models-mobile.zip'
+export CROPINTEL_MODELS_URL='https://github.com/rakshithj09/CropIntel/releases/download/v1/cropintel-models-mobile.zip'
 python3 -m ml.scripts.fetch_models
 
 # 2) start the inference service (terminal A)
@@ -63,7 +76,7 @@ After training/promoting, repackage and replace the release bundle:
 
 ```bash
 python3 -m ml.scripts.package_models --tflite-only -o cropintel-models-mobile.zip
-gh release upload v1 cropintel-models-mobile.zip -R HavishNSK/CropIntel --clobber
+gh release upload v1 cropintel-models-mobile.zip -R rakshithj09/CropIntel --clobber
 # on a running server: rm ml/models/.cropintel-fetch-ok && docker compose -f docker-compose.prod.yml restart
 ```
 
