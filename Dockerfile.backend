@@ -1,0 +1,27 @@
+# CropIntel FastAPI inference service for Cloud Run, Render, or another
+# standalone backend host. The Next.js frontend is not included in this image.
+FROM python:3.11-slim-bookworm
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY ml/requirements-inference.txt /app/ml/requirements-inference.txt
+RUN pip install --no-cache-dir -r /app/ml/requirements-inference.txt
+
+COPY ml /app/ml
+COPY docker/backend-entrypoint.sh /app/docker/backend-entrypoint.sh
+
+RUN chmod +x /app/docker/backend-entrypoint.sh
+
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+ENV TF_CPP_MIN_LOG_LEVEL=2
+ENV CROPINTEL_BACKEND=tflite
+
+EXPOSE 8000
+
+ENTRYPOINT ["/app/docker/backend-entrypoint.sh"]
+CMD ["sh", "-c", "python -m uvicorn ml.serve.inference_app:app --host 0.0.0.0 --port ${PORT:-8000}"]

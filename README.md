@@ -29,6 +29,10 @@ CROPINTEL_MODELS_URL=...                           # override the default v1 mod
 For a real domain + TLS, monitoring, and model promotion/rollback, see
 [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
+For Vercel frontend deployments, deploy the FastAPI inference service separately
+with [docs/BACKEND_DEPLOYMENT.md](docs/BACKEND_DEPLOYMENT.md), then set Vercel
+`INFERENCE_URL=https://YOUR_DEPLOYED_BACKEND_URL`.
+
 ## Local development (no Docker)
 
 The web app forwards predictions to the inference service, so run both:

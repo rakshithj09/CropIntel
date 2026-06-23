@@ -7,15 +7,15 @@
  */
 
 import { createSecureResponse } from '@/lib/security/headers'
-
-const INFERENCE_URL = process.env.INFERENCE_URL || 'http://127.0.0.1:8000'
+import { getInferenceUrl } from '@/lib/server/inferenceUrl'
 
 export async function GET() {
   let inference: any = null
   let healthy = false
 
   try {
-    const upstream = await fetch(`${INFERENCE_URL}/readyz`, {
+    const inferenceUrl = getInferenceUrl()
+    const upstream = await fetch(`${inferenceUrl}/readyz`, {
       signal: AbortSignal.timeout(5_000),
       cache: 'no-store',
     })

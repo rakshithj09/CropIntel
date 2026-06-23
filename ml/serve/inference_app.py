@@ -36,6 +36,7 @@ os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 
 from ml.config import CROPS
@@ -50,6 +51,22 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger("inference")
 
 app = FastAPI(title="CropIntel Inference Service", docs_url=None, redoc_url=None)
+
+_cors_origins = [
+    origin.strip().rstrip("/")
+    for origin in os.environ.get(
+        "CROPINTEL_CORS_ORIGINS",
+        "http://localhost:3050,http://127.0.0.1:3050",
+    ).split(",")
+    if origin.strip()
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
+)
 
 # crop -> {"predictor": TFLitePredictor|None, "error": str|None, "lock": Lock}
 # TFLite interpreters are not thread-safe; every predict() call takes the
