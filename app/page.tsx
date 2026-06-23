@@ -393,9 +393,6 @@ export default function Home() {
                     <h2 className="text-lg font-bold text-primary-900">Check this crop</h2>
                     <p className="mt-1 text-sm text-field-soil">Use a sharp, well-lit photo of the leaf or damaged area.</p>
                   </div>
-                  <div className="rounded-full border border-field-soil/10 bg-field-cream px-3 py-1 text-xs font-semibold text-field-soil">
-                    Step <span className="font-bold text-primary-800">1</span> of 3
-                  </div>
                 </div>
 
                 <div className="mt-5 flex flex-wrap gap-2">
