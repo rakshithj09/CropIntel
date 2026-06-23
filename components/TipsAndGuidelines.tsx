@@ -16,7 +16,7 @@ export default function TipsAndGuidelines() {
           <span className="rounded-xl border border-primary-100 bg-primary-50 p-2">
             <Camera className="w-4 h-4 text-primary-700" />
           </span>
-          <span>Better photo, better check</span>
+          <span>Photo tips</span>
         </h3>
         <ChevronDown
           className={`w-5 h-5 text-slate-600 transition-transform duration-200 group-hover:text-primary-700 ${isOpen ? 'rotate-180' : ''}`}
