@@ -7,16 +7,16 @@ export default function TipsAndGuidelines() {
   const [isOpen, setIsOpen] = useState(false)
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-6 shadow-sm">
+    <div className="surface rounded-2xl p-4 sm:p-6">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center justify-between w-full text-left group gap-4"
       >
-        <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2">
-          <span className="p-2 rounded-xl bg-primary-50 border border-primary-100">
+        <h3 className="flex items-center gap-2 text-base font-bold text-primary-900">
+          <span className="rounded-xl border border-primary-100 bg-primary-50 p-2">
             <Camera className="w-4 h-4 text-primary-700" />
           </span>
-          <span>Capture tips</span>
+          <span>Photo tips</span>
         </h3>
         <ChevronDown
           className={`w-5 h-5 text-slate-600 transition-transform duration-200 group-hover:text-primary-700 ${isOpen ? 'rotate-180' : ''}`}
@@ -24,14 +24,14 @@ export default function TipsAndGuidelines() {
       </button>
 
       {isOpen && (
-        <div className="mt-5 space-y-4 text-slate-700">
-          <div className="rounded-xl p-4 border border-slate-200 bg-slate-50/60">
+        <div className="mt-5 space-y-4 text-field-soil">
+          <div className="rounded-xl border border-field-soil/10 bg-field-cream p-4">
             <h4 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
               <Camera className="w-4 h-4 text-primary-700" />
-              Image quality
+              Good field photo
             </h4>
             <ul className="space-y-2">
-              {['Use clear, well-lit photos', 'Ensure the leaf/disease area is in focus', 'Avoid blurry or dark images', 'Take photos in natural daylight when possible'].map((tip, i) => (
+              {['Use daylight when possible', 'Keep the damaged area in focus', 'Fill most of the frame with the leaf', 'Avoid shadows, mud, or fingers covering symptoms'].map((tip, i) => (
                 <li key={i} className="flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 text-primary-700 mt-0.5 flex-shrink-0" />
                   <span>{tip}</span>
@@ -40,15 +40,15 @@ export default function TipsAndGuidelines() {
             </ul>
           </div>
 
-          <div className="rounded-xl p-4 border border-slate-200 bg-slate-50/60">
+          <div className="rounded-xl border border-field-soil/10 bg-field-cream p-4">
             <h4 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
               <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-700">
                 2
               </span>
-              What to capture
+              What to include
             </h4>
             <ul className="space-y-2">
-              {['Focus on the affected area of the plant', 'Include enough context (entire leaf or affected region)', 'Capture both sides of leaves if symptoms are visible', 'Avoid including too much background'].map((tip, i) => (
+              {['Capture the spots, rust, yellowing, or lesions clearly', 'Include one wider photo if the whole plant is affected', 'Photograph both sides of the leaf if symptoms show there', 'Take a second photo from another row if damage varies'].map((tip, i) => (
                 <li key={i} className="flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 text-primary-700 mt-0.5 flex-shrink-0" />
                   <span>{tip}</span>
@@ -57,15 +57,15 @@ export default function TipsAndGuidelines() {
             </ul>
           </div>
 
-          <div className="rounded-xl p-4 border border-slate-200 bg-slate-50/60">
+          <div className="rounded-xl border border-field-soil/10 bg-field-cream p-4">
             <h4 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
               <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-700">
                 3
               </span>
-              Best practices
+              Before acting
             </h4>
             <ul className="space-y-2">
-              {['Take multiple photos from different angles', 'Include healthy parts for comparison if possible', 'Note the crop type and growth stage', 'Check predictions match visual symptoms'].map((tip, i) => (
+              {['Scout more than one plant', 'Compare with healthy leaves nearby', 'Note the crop stage and recent weather', 'Treat only after the result matches what you see'].map((tip, i) => (
                 <li key={i} className="flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 text-primary-700 mt-0.5 flex-shrink-0" />
                   <span>{tip}</span>
@@ -78,7 +78,7 @@ export default function TipsAndGuidelines() {
             <div className="flex items-start gap-3">
               <TriangleAlert className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-amber-900">
-                <span className="font-semibold">Reminder:</span> Predictions support field decisions—confirm with local agronomists or extension services before treatment.
+                <span className="font-semibold">Reminder:</span> CropIntel helps with scouting. Confirm treatment choices with a local agronomist or extension service.
               </p>
             </div>
           </div>

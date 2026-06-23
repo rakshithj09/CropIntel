@@ -317,7 +317,7 @@ export default function NotificationSystem({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="touch-manipulation relative flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border-2 border-slate-200 bg-white p-2 shadow-sm transition-all hover:border-primary-400 hover:shadow-md"
-        aria-label="Notifications"
+        aria-label="Crop alerts"
         aria-expanded={isOpen}
         aria-haspopup="dialog"
       >
@@ -343,7 +343,7 @@ export default function NotificationSystem({
                   >
                     <span className="inline-flex shrink-0 items-center gap-2">
                       <Bell className="h-5 w-5 shrink-0 text-primary-700" />
-                      <span>Disease Alerts</span>
+                      <span>Crop alerts</span>
                     </span>
                     {unreadCount > 0 && (
                       <span className="inline-flex shrink-0 items-center rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white shadow-sm">
@@ -379,7 +379,7 @@ export default function NotificationSystem({
                     <Bell className="mx-auto mb-3 h-12 w-12 text-slate-400" />
                     <p className="font-semibold text-slate-800">No alerts yet</p>
                     <p className="mt-1 text-sm text-slate-500">
-                      You&apos;ll be notified when outbreaks occur within 250 miles
+                      You&apos;ll be notified when reported crop trouble is within 250 miles
                     </p>
                   </div>
                 ) : (

@@ -1,5 +1,7 @@
 'use client'
 
+import { Download, FileJson, Share2, Table } from 'lucide-react'
+
 interface ExportResultsProps {
   prediction: any
   crop: string
@@ -29,7 +31,7 @@ export default function ExportResults({ prediction, crop, imageUrl }: ExportResu
   }
 
   const exportToCSV = () => {
-    const headers = ['Disease', 'Confidence (%)', 'Is Healthy']
+    const headers = ['Likely issue', 'Match strength (%)', 'Looks healthy']
     const rows = prediction.all_predictions.map((p: any) => [
       p.disease,
       p.confidence.toFixed(2),
@@ -53,12 +55,12 @@ export default function ExportResults({ prediction, crop, imageUrl }: ExportResu
   }
 
   const shareResults = async () => {
-    const text = `CropIntel Analysis Results:\nCrop: ${crop}\nDisease: ${prediction.disease}\nConfidence: ${prediction.confidence.toFixed(1)}%\n\nAnalyzed with CropIntel AI`
+    const text = `CropIntel field check:\nCrop: ${crop}\nLikely issue: ${prediction.disease}\nMatch strength: ${prediction.confidence.toFixed(1)}%\n\nUse this for scouting and confirm before treatment.`
 
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'CropIntel Analysis Results',
+          title: 'CropIntel field check',
           text: text,
         })
       } catch (err) {
@@ -67,44 +69,39 @@ export default function ExportResults({ prediction, crop, imageUrl }: ExportResu
     } else {
       // Fallback: copy to clipboard
       navigator.clipboard.writeText(text)
-      alert('Results copied to clipboard!')
+      alert('Field check copied to clipboard.')
     }
   }
 
   return (
-    <div className="mt-6 bg-gradient-to-br from-white to-gray-50 rounded-2xl border-2 border-gray-200/50 p-6 shadow-xl">
-      <h3 className="text-2xl font-extrabold text-gray-900 mb-5 flex items-center gap-3">
-        <svg className="w-7 h-7 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-        Export Results
+    <div className="mt-6 rounded-2xl border border-field-soil/10 bg-white p-4 shadow-sm sm:p-6">
+      <h3 className="mb-5 flex items-center gap-3 text-lg font-bold text-primary-900">
+        <Download className="h-5 w-5 text-primary-700" />
+        Save this field check
       </h3>
-      <div className="flex flex-wrap gap-4">
+      <div className="grid gap-3 sm:grid-cols-3">
         <button
+          type="button"
           onClick={exportToJSON}
-          className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-300 flex items-center gap-2 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105"
+          className="btn-secondary"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          Export JSON
+          <FileJson className="h-4 w-4" />
+          Save JSON
         </button>
         <button
+          type="button"
           onClick={exportToCSV}
-          className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-300 flex items-center gap-2 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105"
+          className="btn-secondary"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          Export CSV
+          <Table className="h-4 w-4" />
+          Save CSV
         </button>
         <button
+          type="button"
           onClick={shareResults}
-          className="px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 transition-all duration-300 flex items-center gap-2 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105"
+          className="btn-primary"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-          </svg>
+          <Share2 className="h-4 w-4" />
           Share
         </button>
       </div>

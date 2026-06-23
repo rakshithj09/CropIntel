@@ -48,47 +48,60 @@ export default function PredictionResults({
 
   const getStatusText = () => {
     if (prediction.not_in_catalog) {
-      return 'No match in catalog'
+      return 'No clear match'
     }
     if (prediction.is_healthy) {
-      return 'Healthy'
+      return 'Looks healthy'
     }
     if (prediction.meets_threshold) {
-      return 'Disease detected'
+      return 'Possible disease'
     }
-    return 'Low confidence'
+    return 'Needs another look'
+  }
+
+  const getFieldAction = () => {
+    if (prediction.not_in_catalog) {
+      return 'Take another clear photo from a different angle and compare symptoms with an agronomist before treating.'
+    }
+    if (prediction.is_healthy) {
+      return 'Keep scouting this field. Recheck if new spots, yellowing, or spreading damage appears.'
+    }
+    if (prediction.meets_threshold) {
+      return 'Scout nearby rows, compare the symptoms below, and plan treatment only after field confirmation.'
+    }
+    return 'Use a sharper close-up in daylight, then compare the top matches before making treatment decisions.'
   }
 
   return (
-    <div className="mt-8 p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
-      <h2 className="text-lg font-semibold text-slate-900 mb-5 flex items-center gap-2">
-        <svg className="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className="mt-8 rounded-2xl border border-field-soil/10 bg-white p-4 shadow-sm sm:p-6">
+      <h2 className="mb-5 flex items-center gap-2 text-lg font-bold text-primary-900">
+        <svg className="h-7 w-7 text-primary-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        Results
+        Field readout
       </h2>
       {regionNote && (
-        <p className="text-xs text-slate-600 mb-4 -mt-2 px-1 py-2 rounded-lg bg-sky-50 border border-sky-100">
+        <p className="-mt-2 mb-4 rounded-lg border border-primary-100 bg-primary-50 px-3 py-2 text-xs leading-5 text-field-soil">
           {regionNote}
         </p>
       )}
 
       {/* Main Result */}
-      <div className="rounded-xl p-5 mb-6 border border-slate-200 bg-slate-50/60">
-        <div className="flex items-center justify-between mb-4">
+      <div className="mb-6 rounded-xl border border-field-soil/10 bg-field-cream p-5">
+        <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-              Top label
+            <h3 className="text-xs font-bold uppercase tracking-wide text-field-soil">
+              Likely field issue
             </h3>
-            <p className="text-2xl font-semibold text-slate-900 mt-1">
+            <p className="mt-1 text-2xl font-bold text-primary-900">
               {prediction.disease}
             </p>
           </div>
-          <div className="text-right">
-            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-              Confidence
+          <div className="sm:text-right">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-field-soil">
+              Match strength
             </h3>
-            <p className="text-2xl font-semibold text-primary-700 mt-1 tabular-nums">
+            <p className="mt-1 text-2xl font-bold tabular-nums text-primary-800">
               {Math.min(100, Math.max(0, toConfidencePercent(prediction.confidence))).toFixed(1)}%
             </p>
           </div>
@@ -107,16 +120,21 @@ export default function PredictionResults({
         </div>
       </div>
 
+      <div className="mb-6 rounded-xl border border-primary-100 bg-primary-50 p-4">
+        <p className="text-xs font-bold uppercase tracking-wide text-primary-800">What to do next</p>
+        <p className="mt-1 text-sm leading-6 text-primary-950">{getFieldAction()}</p>
+      </div>
+
       {/* Not-in-catalog notice: model couldn't confidently match any known disease */}
       {prediction.not_in_catalog && (
         <div className="rounded-xl p-4 mb-6 border border-amber-200 bg-amber-50 text-amber-900">
           <div className="flex items-start gap-2">
             <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold text-sm">This may not be a disease we detect</p>
+              <p className="font-semibold text-sm">This may not be a crop issue CropIntel can identify</p>
               <p className="text-sm mt-1 leading-snug">
                 {prediction.catalog_message ||
-                  "The image doesn't clearly match any disease in our catalog for this crop. The labels below are the closest guesses, shown for reference only — treat with caution and consider an agricultural expert."}
+                  "The photo does not clearly match a known issue for this crop. The matches below are only a starting point. Do not treat from this result alone."}
               </p>
             </div>
           </div>
@@ -126,10 +144,10 @@ export default function PredictionResults({
       {/* All Predictions */}
       <div>
         <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
-          <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="h-5 w-5 text-field-soil" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
-          Other labels
+          Other possible matches
         </h3>
         <div className="space-y-3">
           {prediction.all_predictions.map((pred, index) => {
@@ -139,7 +157,7 @@ export default function PredictionResults({
             return (
               <div
                 key={index}
-                className="bg-white rounded-xl border border-slate-200 p-4 transition-all duration-200 hover:border-primary-300 hover:bg-slate-50/50"
+                className="rounded-xl border border-field-soil/10 bg-white p-4 transition-all duration-200 hover:border-primary-300 hover:bg-primary-50/40"
               >
                 {/* Stacked on phones; row layout from md up */}
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
@@ -149,7 +167,7 @@ export default function PredictionResults({
                   <div className="flex w-full min-w-0 items-center gap-3 md:max-w-md md:flex-[1_1_40%]">
                     <div className="min-h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-200">
                       <div
-                        className="h-2 max-w-full rounded-full bg-gradient-to-r from-primary-600 to-blue-600 transition-all duration-500"
+                        className="h-2 max-w-full rounded-full bg-gradient-to-r from-primary-700 to-field-straw transition-all duration-500"
                         style={{ width: `${pctClamped}%` }}
                       />
                     </div>

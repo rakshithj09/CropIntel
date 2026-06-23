@@ -9,10 +9,10 @@ import type { OutbreakReport } from '@/lib/outbreakReport'
 const GoogleMapComponent = dynamic(() => import('./GoogleMap'), {
   ssr: false,
   loading: () => (
-    <div className="flex h-full min-h-[280px] w-full items-center justify-center rounded-xl border-2 border-slate-300 bg-white sm:min-h-[400px]">
+    <div className="flex h-full min-h-[280px] w-full items-center justify-center rounded-xl border border-field-soil/10 bg-white sm:min-h-[400px]">
       <div className="px-4 text-center">
-        <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600"></div>
-        <p className="text-sm font-semibold text-blue-600 sm:text-base">Loading Google Maps...</p>
+        <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-primary-700"></div>
+        <p className="text-sm font-semibold text-primary-800 sm:text-base">Loading map...</p>
       </div>
     </div>
   ),
@@ -237,7 +237,7 @@ export default function USOutbreakMap({ reports = [], onReportSubmit, reporterVe
       {/* Map card: explicit height so the map fills the area (no aspect-ratio gap) */}
       <div
         ref={mapCardRef}
-        className={`flex w-full flex-col overflow-hidden rounded-xl border-2 border-slate-300 bg-white shadow-lg ${
+        className={`flex w-full flex-col overflow-hidden rounded-xl border border-field-soil/10 bg-white shadow-sm ${
           layoutFullscreen
             ? 'fixed inset-0 z-[5000] h-[100dvh] max-h-[100dvh] min-h-0 w-full max-w-none rounded-none border-slate-300 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]'
             : ''
@@ -269,7 +269,7 @@ export default function USOutbreakMap({ reports = [], onReportSubmit, reporterVe
               <button
                 type="button"
                 onClick={() => void toggleFullscreen()}
-                className="touch-manipulation rounded-lg border border-slate-200 bg-white/95 px-2.5 py-2 text-slate-800 shadow-md backdrop-blur-sm transition hover:bg-white sm:px-3"
+                className="touch-manipulation rounded-lg border border-field-soil/15 bg-white/95 px-2.5 py-2 text-primary-900 shadow-md backdrop-blur-sm transition hover:bg-field-cream sm:px-3"
                 aria-label={expanded ? 'Exit fullscreen map' : 'Fullscreen map'}
                 title={expanded ? 'Exit fullscreen' : 'Fullscreen'}
               >
@@ -282,8 +282,8 @@ export default function USOutbreakMap({ reports = [], onReportSubmit, reporterVe
             </div>
 
             {selectedLocation && !showReportForm && (
-              <div className="pointer-events-none absolute left-2 top-12 z-[1000] max-w-[calc(100%-4rem)] rounded-lg border-2 border-blue-200 bg-white p-2 shadow-xl sm:left-3 sm:top-14 sm:p-3">
-                <p className="mb-0.5 text-[11px] font-bold text-slate-900 sm:text-xs">📍 Selected</p>
+              <div className="pointer-events-none absolute left-2 top-12 z-[1000] max-w-[calc(100%-4rem)] rounded-lg border border-primary-200 bg-white p-2 shadow-xl sm:left-3 sm:top-14 sm:p-3">
+                <p className="mb-0.5 text-[11px] font-bold text-primary-900 sm:text-xs">Selected location</p>
                 <p className="break-all font-mono text-[10px] text-slate-600 sm:text-xs">
                   {selectedLocation.lat.toFixed(4)}, {selectedLocation.lng.toFixed(4)}
                 </p>
@@ -291,10 +291,10 @@ export default function USOutbreakMap({ reports = [], onReportSubmit, reporterVe
             )}
           </div>
 
-          <div className="flex shrink-0 items-center gap-2 border-t border-slate-200 bg-slate-50 px-3 py-2.5 sm:px-4 sm:py-3">
-            <MapPin className="h-4 w-4 shrink-0 text-blue-700" />
-            <p className="text-xs font-semibold leading-snug text-slate-800 sm:text-sm">
-              Tap or click the map to report an outbreak
+          <div className="flex shrink-0 items-center gap-2 border-t border-field-soil/10 bg-field-cream px-3 py-2.5 sm:px-4 sm:py-3">
+            <MapPin className="h-4 w-4 shrink-0 text-primary-700" />
+            <p className="text-xs font-semibold leading-snug text-primary-900 sm:text-sm">
+              Tap the map where you are seeing crop trouble
             </p>
           </div>
         </div>
@@ -313,30 +313,30 @@ export default function USOutbreakMap({ reports = [], onReportSubmit, reporterVe
           />
           <div
             onClick={(e) => e.stopPropagation()}
-            className="relative z-10 max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-2xl border border-slate-200 bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-2xl sm:p-6 sm:pb-6"
+            className="relative z-10 max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-2xl border border-field-soil/10 bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-2xl sm:p-6 sm:pb-6"
           >
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
-                  <div className="p-2 bg-orange-100 rounded-lg">
-                    <AlertTriangle className="w-6 h-6 text-orange-600" />
+                <h2 className="flex items-center gap-3 text-2xl font-bold text-primary-900">
+                  <div className="rounded-lg bg-field-wheat/40 p-2">
+                    <AlertTriangle className="h-6 w-6 text-field-soil" />
                   </div>
-                  Report Outbreak
+                  Report crop trouble
                 </h2>
                 <button
                   onClick={() => {
                     setShowReportForm(false)
                     setSelectedLocation(null)
                   }}
-                  className="text-slate-400 hover:text-slate-600 transition-colors p-1 hover:bg-slate-100 rounded-lg"
+                  className="rounded-lg p-1 text-field-soil transition-colors hover:bg-field-cream hover:text-primary-900"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               {selectedLocation && (
-                <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                  <p className="text-xs text-blue-700 font-semibold mb-1">Location</p>
-                  <p className="text-sm text-blue-900 font-mono">
+                <div className="mb-4 rounded-lg border border-primary-100 bg-primary-50 p-3">
+                  <p className="mb-1 text-xs font-semibold text-primary-800">Location</p>
+                  <p className="font-mono text-sm text-primary-900">
                     {selectedLocation.lat.toFixed(4)}, {selectedLocation.lng.toFixed(4)}
                   </p>
                 </div>
@@ -345,33 +345,33 @@ export default function USOutbreakMap({ reports = [], onReportSubmit, reporterVe
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Crop Type <span className="text-red-500">*</span>
+                    Crop affected <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.crop}
                     onChange={(e) => setFormData({ ...formData, crop: e.target.value })}
-                    placeholder="e.g., Corn, Wheat, Rice"
-                    className="w-full px-4 py-2.5 border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                    placeholder="Corn, wheat, rice"
+                    className="field-input py-2.5"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Disease Name <span className="text-red-500">*</span>
+                    What it looks like <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.disease}
                     onChange={(e) => setFormData({ ...formData, disease: e.target.value })}
-                    placeholder="e.g., Rust, Blight, Mosaic"
-                    className="w-full px-4 py-2.5 border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                    placeholder="Rust, blight, yellowing"
+                    className="field-input py-2.5"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Severity <span className="text-red-500">*</span>
+                    How bad is it? <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={formData.severity}
@@ -381,33 +381,34 @@ export default function USOutbreakMap({ reports = [], onReportSubmit, reporterVe
                         severity: e.target.value as 'low' | 'medium' | 'high',
                       })
                     }
-                    className="w-full px-4 py-2.5 border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white"
+                    className="field-input py-2.5"
                   >
-                    <option value="low">🟡 Low</option>
-                    <option value="medium">🟠 Medium</option>
-                    <option value="high">🔴 High</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Description
+                    Field notes
                   </label>
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Additional details about the outbreak..."
+                    placeholder="How much of the field is affected? When did you notice it?"
                     rows={3}
-                    className="w-full px-4 py-2.5 border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none"
+                    className="field-input resize-none py-2.5"
                   />
                 </div>
 
                 <button
+                  type="button"
                   onClick={handleSubmitReport}
-                  className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-6 rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+                  className="btn-primary w-full"
                 >
                   <Save className="w-5 h-5" />
-                  Submit Report
+                  Share report
                 </button>
               </div>
           </div>

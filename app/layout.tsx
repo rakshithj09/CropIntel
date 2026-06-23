@@ -3,15 +3,15 @@ import './globals.css'
 import { ThemeProvider } from '@/components/ui/theme-provider'
 
 export const metadata: Metadata = {
-  title: 'CropIntel - AI-Powered Crop Disease Classification',
-  description: 'Upload crop leaf images to detect diseases using AI',
+  title: 'CropIntel - Field Crop Checks',
+  description: 'Check crop leaf photos, save farm areas, and watch nearby crop issue reports.',
 }
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#f8fafc',
+  themeColor: '#fbf7ec',
 }
 
 export default function RootLayout({

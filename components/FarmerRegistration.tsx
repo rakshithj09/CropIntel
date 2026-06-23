@@ -120,11 +120,12 @@ export default function FarmerRegistration({ onRegister, crops }: FarmerRegistra
   return (
     <>
       <button
+        type="button"
         onClick={() => setIsOpen(true)}
-        className="px-4 py-2 bg-primary-700 hover:bg-primary-800 text-white rounded-xl font-semibold transition-colors flex items-center gap-2 shadow-sm"
+        className="btn-primary min-h-[42px] px-4 py-2"
       >
         <MapPin className="w-4 h-4" />
-        Register Your Farm
+        Watch My Farm
       </button>
 
       {mounted &&
@@ -132,145 +133,157 @@ export default function FarmerRegistration({ onRegister, crops }: FarmerRegistra
         createPortal(
               <div
                 key="farm-registration-fullpage"
-                className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen flex-col overflow-hidden bg-white"
+                className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen flex-col overflow-hidden bg-field-cream"
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="farm-registration-title"
               >
-            <div className="flex items-center justify-between gap-4 px-5 sm:px-10 lg:px-16 py-4 sm:py-6 border-b border-slate-200 flex-shrink-0 bg-white">
-              <h2
-                id="farm-registration-title"
-                className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-3 min-w-0"
-              >
-                <MapPin className="w-7 h-7 text-primary-600 shrink-0" />
-                <span>Register your farm</span>
-              </h2>
-              <button
-                type="button"
-                onClick={() => setIsOpen(false)}
-                className="text-slate-500 hover:text-slate-900 transition-colors p-3 hover:bg-slate-100 rounded-xl shrink-0 border border-slate-200"
-                aria-label="Close"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="px-5 sm:px-10 lg:px-16 py-5 sm:py-6 bg-primary-50/90 border-b border-primary-100 flex-shrink-0">
-              <label className="block text-base font-bold text-slate-800 mb-2" htmlFor="farm-registration-name">
-                Farm name <span className="text-red-600">*</span>
-              </label>
-              <input
-                id="farm-registration-name"
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-                placeholder="e.g., Smith Family Farm"
-                autoComplete="organization"
-                className="w-full max-w-3xl px-5 py-4 border-2 border-primary-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-primary-600 bg-white text-lg"
-              />
-            </div>
-
-            <div className="flex-1 overflow-y-auto overscroll-contain px-5 sm:px-10 lg:px-16 py-6 sm:py-8 space-y-6 sm:space-y-8 min-h-0">
-              <div>
-                <label className="block text-base font-semibold text-slate-700 mb-2">
-                  Email (optional)
-                </label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
-                  placeholder="farmer@example.com"
-                  className="w-full max-w-3xl px-5 py-4 border-2 border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-600 transition-all text-lg"
-                />
-              </div>
-
-              <div>
-                <label className="block text-base font-semibold text-slate-700 mb-2">
-                  USDA farm / tract code (optional)
-                </label>
-                <input
-                  type="text"
-                  value={formData.usdaFarmCode}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, usdaFarmCode: e.target.value }))}
-                  placeholder="e.g., 12345-67890"
-                  className="w-full max-w-3xl px-5 py-4 border-2 border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-600 transition-all font-mono text-lg"
-                />
-                <p className="text-sm text-slate-600 mt-2 max-w-3xl">
-                  If provided and format looks valid, you&apos;ll be marked as a <strong>Verified farmer</strong>{' '}
-                  (demo validation only).
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-base font-semibold text-slate-700 mb-2">
-                  Location <span className="text-red-500">*</span>
-                </label>
-                <div className="flex flex-col sm:flex-row gap-3 mb-3 max-w-3xl">
-                  <input
-                    type="number"
-                    step="any"
-                    value={formData.lat}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, lat: e.target.value }))}
-                    placeholder="Latitude"
-                    className="flex-1 min-w-0 px-5 py-4 border-2 border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-600 transition-all text-lg"
-                  />
-                  <input
-                    type="number"
-                    step="any"
-                    value={formData.lng}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, lng: e.target.value }))}
-                    placeholder="Longitude"
-                    className="flex-1 min-w-0 px-5 py-4 border-2 border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-600 transition-all text-lg"
-                  />
-                </div>
+            <div className="flex flex-shrink-0 items-center justify-between gap-4 border-b border-field-soil/10 bg-white px-5 py-4 sm:px-8 sm:py-5 lg:px-10">
+              <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4">
+                <h2
+                  id="farm-registration-title"
+                  className="flex min-w-0 items-center gap-3 text-xl font-bold text-primary-900 sm:text-2xl"
+                >
+                  <MapPin className="h-7 w-7 shrink-0 text-primary-700" />
+                  <span>Register your farm</span>
+                </h2>
                 <button
                   type="button"
-                  onClick={handleGetLocation}
-                  className="w-full max-w-3xl px-5 py-4 bg-primary-100 hover:bg-primary-200 text-primary-900 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 text-lg"
+                  onClick={() => setIsOpen(false)}
+                  className="shrink-0 rounded-xl border border-field-soil/15 p-3 text-field-soil transition-colors hover:bg-field-cream hover:text-primary-900"
+                  aria-label="Close"
                 >
-                  <MapPin className="w-5 h-5" />
-                  Use My Current Location
+                  <X className="w-6 h-6" />
                 </button>
-              </div>
-
-              <div>
-                <label className="block text-base font-semibold text-slate-700 mb-3">
-                  Crops you grow <span className="text-red-500">*</span>
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 max-w-4xl">
-                  {crops.map((crop) => (
-                    <button
-                      type="button"
-                      key={crop}
-                      onClick={() => handleCropToggle(crop)}
-                      className={`px-4 py-5 sm:py-6 rounded-xl font-bold transition-all border-2 text-lg ${
-                        formData.selectedCrops.includes(crop)
-                          ? 'bg-primary-700 text-white border-primary-700 shadow-md'
-                          : 'bg-slate-100 text-slate-800 border-slate-300 hover:border-primary-400'
-                      }`}
-                    >
-                      {crop.charAt(0).toUpperCase() + crop.slice(1)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 sm:p-5 max-w-3xl">
-                <p className="text-sm sm:text-base text-primary-900">
-                  <strong>Note:</strong> You&apos;ll receive alerts for disease outbreaks within 250 miles of your registered location for the crops you select.
-                </p>
               </div>
             </div>
 
-            <div className="flex-shrink-0 border-t border-slate-200 px-5 sm:px-10 lg:px-16 py-5 sm:py-6 bg-slate-50">
-              <button
-                type="button"
-                onClick={handleSubmit}
-                className="w-full max-w-3xl mx-auto bg-gradient-to-r from-primary-700 to-primary-800 hover:from-primary-800 hover:to-primary-900 text-white font-bold py-4 sm:py-5 px-8 rounded-xl transition-all flex items-center justify-center gap-3 shadow-md text-lg"
-              >
-                <Save className="w-6 h-6" />
-                Register Farm
-              </button>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-6 sm:px-8 sm:py-8 lg:px-10">
+              <div className="mx-auto grid max-w-6xl gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,0.85fr)] xl:gap-8">
+                <section className="space-y-6">
+                  <div>
+                    <label className="mb-2 block text-base font-bold text-primary-900" htmlFor="farm-registration-name">
+                      Farm or field name <span className="text-red-600">*</span>
+                    </label>
+                    <input
+                      id="farm-registration-name"
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                      placeholder="North 80, Smith Family Farm"
+                      autoComplete="organization"
+                      className="field-input py-4 text-lg"
+                    />
+                  </div>
+
+                  <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-1">
+                    <div>
+                      <label className="mb-2 block text-base font-bold text-primary-900">
+                        Email for alerts (optional)
+                      </label>
+                      <input
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+                        placeholder="name@example.com"
+                        className="field-input py-4 text-lg"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-base font-bold text-primary-900">
+                        USDA farm or tract code (optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.usdaFarmCode}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, usdaFarmCode: e.target.value }))}
+                        placeholder="12345-67890"
+                        className="field-input py-4 font-mono text-lg"
+                      />
+                      <p className="mt-2 text-sm leading-6 text-field-soil">
+                        If the format looks valid, this browser marks the profile as a <strong>Verified farmer</strong>{' '}
+                        for demo purposes.
+                      </p>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="space-y-6">
+                  <div>
+                    <label className="mb-2 block text-base font-bold text-primary-900">
+                      Farm location <span className="text-red-500">*</span>
+                    </label>
+                    <div className="mb-3 grid gap-3 sm:grid-cols-2">
+                      <input
+                        type="number"
+                        step="any"
+                        value={formData.lat}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, lat: e.target.value }))}
+                        placeholder="Latitude"
+                        className="field-input min-w-0 py-4 text-lg"
+                      />
+                      <input
+                        type="number"
+                        step="any"
+                        value={formData.lng}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, lng: e.target.value }))}
+                        placeholder="Longitude"
+                        className="field-input min-w-0 py-4 text-lg"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleGetLocation}
+                      className="btn-secondary w-full py-4 text-lg"
+                    >
+                      <MapPin className="w-5 h-5" />
+                      Use my current location
+                    </button>
+                  </div>
+
+                  <div>
+                    <label className="mb-3 block text-base font-bold text-primary-900">
+                      Crops in this area <span className="text-red-500">*</span>
+                    </label>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-2">
+                      {crops.map((crop) => (
+                        <button
+                          type="button"
+                          key={crop}
+                          onClick={() => handleCropToggle(crop)}
+                          className={`rounded-xl border px-4 py-4 text-base font-bold transition-all sm:py-5 ${
+                            formData.selectedCrops.includes(crop)
+                              ? 'border-primary-700 bg-primary-700 text-white shadow-md'
+                              : 'border-field-soil/15 bg-white text-primary-900 hover:border-primary-400 hover:bg-primary-50'
+                          }`}
+                        >
+                          {crop.charAt(0).toUpperCase() + crop.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-field-straw/40 bg-field-wheat/30 p-4 sm:p-5">
+                    <p className="text-sm leading-6 text-primary-900 sm:text-base">
+                      <strong>Alert range:</strong> CropIntel watches for reported crop issues within 250 miles for the crops you select.
+                    </p>
+                  </div>
+                </section>
+              </div>
+            </div>
+
+            <div className="flex-shrink-0 border-t border-field-soil/10 bg-white px-5 py-5 sm:px-8 sm:py-6 lg:px-10">
+              <div className="mx-auto flex max-w-6xl justify-stretch sm:justify-end">
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  className="btn-primary w-full py-4 text-lg sm:max-w-sm sm:py-5"
+                >
+                  <Save className="w-6 h-6" />
+                  Save farm area
+                </button>
+              </div>
             </div>
           </div>,
           document.body
