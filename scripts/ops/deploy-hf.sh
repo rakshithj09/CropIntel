@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
 #
-# Deploy the current branch to a Hugging Face Space as the CropIntel inference
-# backend (for a Vercel/other frontend that points INFERENCE_URL at it).
+# Deploy the current branch to a Hugging Face Space as the all-in-one CropIntel
+# app (Next.js UI + Python inference together, public on app_port 3050).
 #
 # Why this is not a plain `git push`:
 #   - HF rejects non-LFS binary files and scans the FULL history, so we push a
 #     single-commit orphan branch with the training-artifact PNGs dropped.
-#   - The Space serves the inference API publicly on app_port 8000 (the README
-#     YAML is rewritten to 8000 for the deploy only; main keeps 3050).
 #
 # Usage:
 #   HF_TOKEN=hf_xxxxx scripts/ops/deploy-hf.sh <hf-user>/<space-name>
@@ -43,16 +41,6 @@ git add -A
 # shellcheck disable=SC2086
 git rm -q --cached $ARTIFACTS >/dev/null 2>&1 || true
 
-# Backend mode: expose the inference API as the Space's public port.
-python3 - <<'PY'
-import re
-p = "README.md"
-s = open(p).read()
-s = re.sub(r'app_port:\s*\d+', 'app_port: 8000', s, count=1)
-open(p, "w").write(s)
-PY
-git add README.md
-
-git commit -q -m "CropIntel — HF Space (inference backend, app_port 8000)"
+git commit -q -m "CropIntel — HF Space deploy (all-in-one app)"
 git push --force "$URL" "${DEPLOY_BRANCH}:main"
-echo "Deployed ${SRC_BRANCH} -> https://huggingface.co/spaces/${REPO} (main, backend mode)"
+echo "Deployed ${SRC_BRANCH} -> https://huggingface.co/spaces/${REPO} (main)"
