@@ -45,9 +45,10 @@ div[title*="For development purposes only"] {
 }
 
 :root {
+  /* Updated to a slightly more cohesive cream → warm-cream gradient */
   --foreground-rgb: 43, 61, 34;
-  --background-start-rgb: 251, 247, 236;
-  --background-end-rgb: 255, 253, 247;
+  --background-start-rgb: 255, 253, 247; /* lighter top */
+  --background-end-rgb: 245, 241, 232;   /* warmer bottom */
 }
 
 * {
@@ -56,7 +57,14 @@ div[title*="For development purposes only"] {
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: #fbf7ec;
+  /* Layered background: radial highlights + clean vertical gradient */
+  background-image:
+    radial-gradient(60% 40% at 10% 10%, rgba(255,255,255,0.6), transparent 20%),
+    radial-gradient(50% 30% at 92% 88%, rgba(240,244,236,0.6), transparent 25%),
+    linear-gradient(180deg, rgba(var(--background-start-rgb),1) 0%, rgba(var(--background-end-rgb),1) 100%);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-size: cover;
   min-height: 100vh;
   min-height: 100dvh;
   overflow-x: hidden;
@@ -112,5 +120,16 @@ img:not([src]) {
 
   .btn-secondary {
     @apply touch-manipulation inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-field-soil/20 bg-white px-4 py-2.5 font-semibold text-primary-900 shadow-sm transition hover:border-primary-300 hover:bg-primary-50;
+  }
+
+  /* Standardize page containers so content sits consistently on the new background */
+  .page-container {
+    @apply min-h-screen px-4 py-8 sm:px-6 lg:px-12;
+    background: transparent;
+  }
+
+  /* Optional subtle variant for pages that need a slightly stronger field behind content */
+  .page-panel {
+    @apply surface bg-white/95;
   }
 }

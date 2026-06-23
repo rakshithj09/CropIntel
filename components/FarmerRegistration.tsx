@@ -145,7 +145,7 @@ export default function FarmerRegistration({ onRegister, crops }: FarmerRegistra
                   className="flex min-w-0 items-center gap-3 text-xl font-bold text-primary-900 sm:text-2xl"
                 >
                   <MapPin className="h-7 w-7 shrink-0 text-primary-700" />
-                  <span>Save my farm area</span>
+                  <span>Register your farm</span>
                 </h2>
                 <button
                   type="button"
