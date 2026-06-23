@@ -13,7 +13,12 @@
 
 services:
   app:
-    build: .
+    build:
+      context: .
+      args:
+        # NEXT_PUBLIC_* is inlined at build time, so the outbreak map needs the
+        # key baked into the image — not just present in `environment` at runtime.
+        - NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-}
     ports:
       - "3050:3050"
     environment:
