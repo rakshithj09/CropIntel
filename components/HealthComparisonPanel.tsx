@@ -1,5 +1,7 @@
 'use client'
 
+/* eslint-disable @next/next/no-img-element */
+
 import { useState } from 'react'
 import { ArrowLeftRight, Loader2, TrendingDown, TrendingUp, Minus } from 'lucide-react'
 import ImageUpload from '@/components/ImageUpload'
@@ -121,35 +123,34 @@ export default function HealthComparisonPanel({ crop, applyRegionalFilter }: Pro
   const ts = trend ? trendStyles(trend) : null
 
   return (
-    <div className="mt-8 pt-8 border-t border-slate-200">
-      <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2">
+    <div className="mt-8 border-t border-field-soil/10 pt-8">
+      <h3 className="flex items-center gap-2 text-base font-bold text-primary-900">
         <ArrowLeftRight className="w-5 h-5 text-primary-700" />
-        Compare past vs current
+        Compare field change
       </h3>
-      <p className="text-sm text-slate-600 mt-1 mb-5">
-        Upload an older leaf photo and a current one (same crop). We run both through the same model and summarize the
-        trend.
+      <p className="mb-5 mt-1 text-sm leading-6 text-field-soil">
+        Add an older photo and a current photo from the same crop to see whether the issue appears to be improving or spreading.
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Past</p>
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Earlier photo</p>
           <ImageUpload
             selectedImage={pastFile}
             onImageSelect={onPastSelect}
             onClear={clearPast}
-            title="Past photo"
-            hint="Older image for comparison."
+            title="Earlier field photo"
+            hint="Use a previous photo from this crop or field."
           />
         </div>
         <div>
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Current</p>
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Today&apos;s photo</p>
           <ImageUpload
             selectedImage={currentFile}
             onImageSelect={onCurrentSelect}
             onClear={clearCurrent}
-            title="Current photo"
-            hint="Most recent image."
+            title="Today&apos;s field photo"
+            hint="Use the newest photo from the same crop."
           />
         </div>
       </div>
@@ -158,10 +159,10 @@ export default function HealthComparisonPanel({ crop, applyRegionalFilter }: Pro
         type="button"
         onClick={handleCompare}
         disabled={!pastFile || !currentFile || loading}
-        className="touch-manipulation mt-6 min-h-[48px] w-full md:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-slate-900 text-white font-semibold shadow-sm hover:bg-slate-800 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors"
+        className="btn-primary mt-6 w-full px-6 md:w-auto"
       >
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowLeftRight className="w-4 h-4" />}
-        {loading ? 'Analyzing both…' : 'Compare photos'}
+        {loading ? 'Checking both photos...' : 'Compare field change'}
       </button>
 
       {error && (
@@ -171,14 +172,14 @@ export default function HealthComparisonPanel({ crop, applyRegionalFilter }: Pro
       {pastPred && currentPred && trend && ts && (
         <div className="mt-8 space-y-6">
           <div
-            className={`flex flex-col sm:flex-row items-center justify-center gap-4 rounded-2xl border-2 px-6 py-5 ${ts.border} ${ts.bg}`}
+            className={`flex flex-col items-center justify-center gap-4 rounded-2xl border px-6 py-5 sm:flex-row ${ts.border} ${ts.bg}`}
           >
             <ts.Icon className={`w-10 h-10 shrink-0 ${ts.text}`} />
             <div className="text-center sm:text-left">
               <p className={`text-xs font-semibold uppercase tracking-wide ${ts.text} opacity-80`}>Comparison</p>
               <p className={`text-2xl font-bold ${ts.text}`}>{trendLabel(trend)}</p>
               <p className="text-sm text-slate-600 mt-1 max-w-md">
-                Based on estimated severity from each diagnosis (not a substitute for scouting or lab tests).
+                Based on the two photo checks. Scout the field before making treatment decisions.
               </p>
             </div>
           </div>
@@ -205,8 +206,8 @@ function ComparisonCard({
   accent: string
 }) {
   return (
-    <div className={`rounded-2xl border-2 bg-white overflow-hidden shadow-sm ${accent}`}>
-      <div className="px-4 py-2 bg-slate-50 border-b border-slate-200">
+    <div className={`overflow-hidden rounded-2xl border bg-white shadow-sm ${accent}`}>
+      <div className="border-b border-field-soil/10 bg-field-cream px-4 py-2">
         <span className="text-sm font-bold text-slate-800">{label}</span>
       </div>
       {imageUrl && (
@@ -215,10 +216,10 @@ function ComparisonCard({
         </div>
       )}
       <div className="p-4">
-        <p className="text-xs text-slate-500 uppercase font-semibold">Prediction</p>
+        <p className="text-xs text-slate-500 uppercase font-semibold">Likely issue</p>
         <p className="text-lg font-semibold text-slate-900 mt-0.5">{prediction.disease}</p>
         <p className="text-sm text-primary-800 font-semibold mt-2 tabular-nums">
-          Confidence {typeof prediction.confidence === 'number' ? prediction.confidence.toFixed(1) : '—'}%
+          Match {typeof prediction.confidence === 'number' ? prediction.confidence.toFixed(1) : '—'}%
         </p>
       </div>
     </div>

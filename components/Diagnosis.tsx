@@ -18,20 +18,20 @@ export default function Diagnosis({ disease, crop, confidence, isHealthy }: Diag
 
   if (isHealthy) {
     return (
-      <div className="mt-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl border-2 border-green-300 p-8 shadow-xl">
+      <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm sm:p-8">
         <div className="flex items-start gap-4">
           <div className="p-3 bg-green-100 rounded-xl">
             <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
           <div className="flex-1">
-            <h3 className="text-2xl font-extrabold text-green-900 mb-3">Diagnosis: Healthy Plant</h3>
+            <h3 className="mb-3 text-2xl font-bold text-green-900">No strong disease signs</h3>
             <p className="text-green-800 mb-4">
-              Great news! Your {crop} plant appears to be healthy with no signs of disease detected.
+              Your {crop} photo does not show clear disease signs from this field check.
             </p>
             <div className="bg-white/60 rounded-xl p-5 border border-green-200">
               <h4 className="font-bold text-green-900 mb-3 flex items-center gap-2">
                 <Shield className="w-5 h-5" />
-                Maintenance Recommendations
+                Keep doing this
               </h4>
               <ul className="space-y-2 text-green-800">
                 {diseaseInfo?.prevention.map((tip, index) => (
@@ -70,24 +70,24 @@ export default function Diagnosis({ disease, crop, confidence, isHealthy }: Diag
   const confidenceInfo = getConfidenceLevel()
 
   return (
-    <div className="mt-6 bg-gradient-to-br from-white to-gray-50 rounded-2xl border-2 border-gray-200/50 p-4 shadow-xl sm:p-8">
+    <div className="mt-6 rounded-2xl border border-field-soil/10 bg-white p-4 shadow-sm sm:p-8">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <h3 className="flex items-center gap-2 text-2xl font-extrabold text-gray-900 sm:gap-3 sm:text-3xl">
+        <h3 className="flex items-center gap-2 text-2xl font-bold text-primary-900 sm:gap-3 sm:text-3xl">
           <AlertCircle className="h-7 w-7 shrink-0 text-primary-600 sm:h-8 sm:w-8" />
-          <span className="min-w-0 leading-tight">Detailed Diagnosis</span>
+          <span className="min-w-0 leading-tight">Field guidance</span>
         </h3>
         <div
           className={`w-fit shrink-0 rounded-xl border-2 px-3 py-1.5 text-xs font-bold sm:px-4 sm:py-2 sm:text-sm ${getSeverityColor()}`}
         >
-          {getSeverityLevel()} Severity
+          {getSeverityLevel()} risk
         </div>
       </div>
 
       {/* Confidence & Assessment */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div className="bg-white rounded-xl p-5 border-2 border-gray-200 shadow-md">
+        <div className="rounded-xl border border-field-soil/10 bg-field-cream p-5 shadow-sm">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-semibold text-gray-600 uppercase">Confidence Level</span>
+            <span className="text-sm font-bold uppercase text-field-soil">Match strength</span>
             <span className={`text-lg font-bold ${confidenceInfo.color}`}>
               {confidenceInfo.level}
             </span>
@@ -103,30 +103,30 @@ export default function Diagnosis({ disease, crop, confidence, isHealthy }: Diag
             />
           </div>
           <p className="text-xs text-gray-500 mt-2">
-            AI confidence: {confidence.toFixed(1)}%
+            Photo match: {confidence.toFixed(1)}%
           </p>
         </div>
 
-        <div className="bg-white rounded-xl p-5 border-2 border-gray-200 shadow-md">
+        <div className="rounded-xl border border-field-soil/10 bg-field-cream p-5 shadow-sm">
           <div className="flex items-center gap-3 mb-2">
             <Calendar className="w-5 h-5 text-primary-600" />
-            <span className="text-sm font-semibold text-gray-600 uppercase">Recommended Action</span>
+            <span className="text-sm font-bold uppercase text-field-soil">Field action</span>
           </div>
           <p className="text-lg font-bold text-gray-900">
-            {diseaseInfo?.severity === 'high' ? 'Immediate Treatment Required' :
-             diseaseInfo?.severity === 'medium' ? 'Monitor & Treat Soon' :
-             'Preventive Measures Recommended'}
+            {diseaseInfo?.severity === 'high' ? 'Scout and act quickly' :
+             diseaseInfo?.severity === 'medium' ? 'Monitor and prepare' :
+             'Watch and prevent spread'}
           </p>
         </div>
       </div>
 
       {/* Tabs — grid keeps all three inside the card on narrow screens */}
-      <div className="-mx-1 mb-6 border-b-2 border-gray-200 px-1 sm:mx-0 sm:px-0">
+      <div className="-mx-1 mb-6 border-b border-field-soil/10 px-1 sm:mx-0 sm:px-0">
         <div className="grid w-full grid-cols-3 gap-1 sm:gap-2">
           {[
-            { id: 'assessment', label: 'Assessment', icon: AlertCircle },
-            { id: 'treatment', label: 'Treatment', icon: Droplet },
-            { id: 'prevention', label: 'Prevention', icon: Shield },
+            { id: 'assessment', label: 'What to look for', icon: AlertCircle },
+            { id: 'treatment', label: 'What to do', icon: Droplet },
+            { id: 'prevention', label: 'Prevent spread', icon: Shield },
           ].map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -134,8 +134,8 @@ export default function Diagnosis({ disease, crop, confidence, isHealthy }: Diag
               onClick={() => setActiveTab(id as 'assessment' | 'treatment' | 'prevention')}
               className={`flex min-h-[3.25rem] min-w-0 touch-manipulation flex-col items-center justify-center gap-0.5 rounded-t-lg px-1.5 py-2 text-center text-[11px] font-semibold leading-tight transition-all duration-300 sm:flex-row sm:gap-2 sm:rounded-t-xl sm:px-4 sm:py-3 sm:text-sm ${
                 activeTab === id
-                  ? 'bg-primary-600 text-white shadow-lg'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-primary-600'
+                  ? 'bg-primary-700 text-white shadow-sm'
+                  : 'text-field-soil hover:bg-primary-50 hover:text-primary-700'
               }`}
             >
               <Icon className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
@@ -149,18 +149,18 @@ export default function Diagnosis({ disease, crop, confidence, isHealthy }: Diag
       <div className="min-h-[300px]">
         {activeTab === 'assessment' && (
           <div className="space-y-6">
-            <div className="bg-white/80 rounded-xl p-6 border-2 border-gray-200">
+            <div className="rounded-xl border border-field-soil/10 bg-white p-5 sm:p-6">
               <h4 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <AlertTriangle className="w-6 h-6 text-orange-600" />
-                Disease Assessment
+                Check these symptoms in the field
               </h4>
               <p className="text-gray-700 mb-4 leading-relaxed">
-                {diseaseInfo?.description || `Based on the AI analysis, your ${crop} plant shows signs of ${disease}.`}
+                {diseaseInfo?.description || `This ${crop} photo shows signs that may match ${disease}.`}
               </p>
               
               {diseaseInfo?.symptoms && diseaseInfo.symptoms.length > 0 && (
                 <div className="mt-5">
-                  <h5 className="font-bold text-gray-900 mb-3">Expected Symptoms:</h5>
+                  <h5 className="font-bold text-gray-900 mb-3">Look for:</h5>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {diseaseInfo.symptoms.map((symptom, index) => (
                       <div key={index} className="flex items-start gap-2 bg-orange-50 rounded-lg p-3 border border-orange-200">
@@ -172,15 +172,14 @@ export default function Diagnosis({ disease, crop, confidence, isHealthy }: Diag
                 </div>
               )}
 
-              <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="mt-6 rounded-lg border border-field-straw/40 bg-field-wheat/25 p-4">
                 <div className="flex items-start gap-3">
-                  <Lightbulb className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <Lightbulb className="mt-0.5 h-5 w-5 flex-shrink-0 text-field-soil" />
                   <div>
-                    <p className="text-sm font-semibold text-blue-900 mb-1">Diagnostic Tip</p>
-                    <p className="text-sm text-blue-800">
-                      Compare the visual symptoms on your plant with the expected symptoms listed above. 
-                      If symptoms match closely, the diagnosis is likely accurate. For confirmation, 
-                      consider consulting with an agricultural extension service.
+                    <p className="mb-1 text-sm font-semibold text-primary-900">Before you treat</p>
+                    <p className="text-sm text-field-soil">
+                      Check several plants and rows, especially field edges and low spots. If symptoms match closely,
+                      confirm with an agronomist or extension service before applying treatment.
                     </p>
                   </div>
                 </div>
@@ -191,22 +190,22 @@ export default function Diagnosis({ disease, crop, confidence, isHealthy }: Diag
 
         {activeTab === 'treatment' && (
           <div className="space-y-6">
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border-2 border-blue-200">
+            <div className="rounded-xl border border-field-soil/10 bg-field-cream p-5 sm:p-6">
               <h4 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <Droplet className="w-6 h-6 text-blue-600" />
-                Treatment Plan
+                <Droplet className="h-6 w-6 text-primary-700" />
+                Action plan
               </h4>
               
               {diseaseInfo?.treatment && diseaseInfo.treatment.length > 0 ? (
                 <div className="space-y-4">
                   <p className="text-gray-700 font-semibold mb-4">
-                    Immediate treatment steps for {disease}:
+                    Practical next steps for {disease}:
                   </p>
                   <div className="space-y-3">
                     {diseaseInfo.treatment.map((step, index) => (
-                      <div key={index} className="bg-white rounded-lg p-4 border border-blue-200 shadow-sm">
+                      <div key={index} className="rounded-lg border border-field-soil/10 bg-white p-4 shadow-sm">
                         <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">
+                          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary-700 font-bold text-white">
                             {index + 1}
                           </div>
                           <p className="text-gray-800 flex-1">{step}</p>
@@ -217,7 +216,7 @@ export default function Diagnosis({ disease, crop, confidence, isHealthy }: Diag
                 </div>
               ) : (
                 <p className="text-gray-700">
-                  Treatment recommendations are being prepared. Please consult with an agricultural expert 
+                  Recommendations are being prepared. Please consult with an agricultural expert 
                   for specific treatment options for {disease} in {crop}.
                 </p>
               )}
@@ -241,16 +240,16 @@ export default function Diagnosis({ disease, crop, confidence, isHealthy }: Diag
 
         {activeTab === 'prevention' && (
           <div className="space-y-6">
-            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border-2 border-green-200">
+            <div className="rounded-xl border border-primary-100 bg-primary-50 p-5 sm:p-6">
               <h4 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <Shield className="w-6 h-6 text-green-600" />
-                Prevention Strategy
+                Ways to reduce spread
               </h4>
               
               {diseaseInfo?.prevention && diseaseInfo.prevention.length > 0 ? (
                 <div className="space-y-4">
                   <p className="text-gray-700 font-semibold mb-4">
-                    Long-term prevention measures to protect your {crop} crops:
+                    Practices that help protect your {crop} crop:
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {diseaseInfo.prevention.map((prevention, index) => (
@@ -287,10 +286,10 @@ export default function Diagnosis({ disease, crop, confidence, isHealthy }: Diag
       </div>
 
       {/* Action Summary */}
-      <div className="mt-6 p-5 bg-gradient-to-r from-primary-50 to-blue-50 rounded-xl border-2 border-primary-200">
+      <div className="mt-6 rounded-xl border border-primary-100 bg-primary-50 p-5">
         <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
           <Lightbulb className="w-5 h-5 text-primary-600" />
-          Quick Action Summary
+          Quick action summary
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
           <div>

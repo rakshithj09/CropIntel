@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import Image from 'next/image'
-import { Bell, MapPin, Sparkles, History as HistoryIcon, ArrowRight, Loader2, Camera, ArrowLeftRight } from 'lucide-react'
+import { MapPin, Sparkles, History as HistoryIcon, ArrowRight, Loader2, Camera, ArrowLeftRight } from 'lucide-react'
 import ImageUpload from '@/components/ImageUpload'
 import CropSelector from '@/components/CropSelector'
 import StateSelector from '@/components/StateSelector'
@@ -199,7 +199,7 @@ export default function Home() {
 
   const regionNote =
     getRelevantDiseasesForCropState(selectedCrop, selectedState) !== null
-      ? `Regional filter: showing labels common for ${selectedCrop} in ${selectedState} (illustrative). Other states or crops may show all labels.`
+      ? `Using common ${selectedCrop} disease patterns for ${selectedState}. If this does not match what you see, check the other possible matches below.`
       : undefined
 
   const handlePredict = async () => {
@@ -309,20 +309,20 @@ export default function Home() {
       crops: location.crops,
     })
     alert(
-      `Farm "${location.name}" registered! You'll now receive alerts for outbreaks within 250 miles.${
-        location.verifiedFarmer ? ' You are marked as a Verified farmer.' : ''
+      `"${location.name}" is saved. CropIntel will watch for reported crop issues within 250 miles.${
+        location.verifiedFarmer ? ' This farm is marked as verified.' : ''
       }`
     )
   }
 
   return (
-    <main className="min-h-screen min-h-[100dvh] px-3 sm:px-4 py-4 sm:py-6 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+    <main className="min-h-screen min-h-[100dvh] px-3 py-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-5 sm:py-5">
       <div className="mx-auto max-w-7xl">
         {/* Top bar */}
-        <header className="sticky top-0 z-40 -mx-3 sm:-mx-4 px-3 sm:px-4 pt-[max(0.5rem,env(safe-area-inset-top))] pb-3 border-b border-slate-200/60 bg-white/95">
+        <header className="glass sticky top-0 z-40 -mx-3 rounded-none border-x-0 border-t-0 px-3 pb-3 pt-[max(0.5rem,env(safe-area-inset-top))] sm:-mx-5 sm:rounded-b-2xl sm:border-x sm:px-5">
           <div className="mx-auto max-w-7xl flex items-center justify-between gap-2 sm:gap-3">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="w-10 h-10 shrink-0 rounded-2xl bg-gradient-to-br from-primary-600 to-primary-700 text-white flex items-center justify-center shadow-sm overflow-hidden">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-primary-200 bg-primary-700 text-white shadow-sm">
                 <Image
                   src="/brand/wheat-mark-transparent.png"
                   alt="CropIntel"
@@ -333,8 +333,8 @@ export default function Home() {
                 />
               </div>
               <div className="leading-tight min-w-0">
-                <div className="text-sm font-semibold text-slate-900 truncate">CropIntel</div>
-                <div className="text-[11px] sm:text-xs text-slate-500 leading-snug">Crop health insights</div>
+                <div className="truncate text-base font-bold text-primary-900">CropIntel</div>
+                <div className="text-[11px] leading-snug text-field-soil sm:text-xs">Crop checks and local alerts</div>
               </div>
             </div>
 
@@ -345,9 +345,9 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => setActiveView('diagnose')}
-                className="hidden items-center gap-2 rounded-xl bg-primary-700 px-4 py-2 font-semibold text-white shadow-sm transition-colors hover:bg-primary-800 sm:flex"
+                className="btn-primary hidden min-h-[42px] px-4 py-2 sm:flex"
               >
-                Diagnose
+                Check crop
               </button>
               <div className="hidden sm:block">
                 <FarmerRegistration onRegister={handleFarmerRegister} crops={Object.keys(CROPS)} />
@@ -359,43 +359,23 @@ export default function Home() {
           </div>
         </header>
 
-        {/* Hero */}
-        <section className="mt-5 sm:mt-8 mb-5 sm:mb-6">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-            <div className="max-w-2xl">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-slate-900 tracking-tight text-balance">
-                Diagnose crop issues from a photo
-              </h1>
-              <p className="mt-2 text-sm sm:text-base text-slate-600">
-                Upload a leaf image, pick the crop, and get a ranked set of labels with confidence.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="px-3 py-2 rounded-xl border border-slate-200 bg-white/80 text-sm text-slate-700 flex items-center gap-2">
-                <Bell className="w-4 h-4 text-primary-700" />
-                Outbreak alerts
-              </div>
-            </div>
-          </div>
-        </section>
-
         {/* Views */}
-        <div className="grid grid-cols-3 gap-2 mb-5 sm:mb-6 sm:flex sm:flex-wrap sm:items-center">
+        <div className="mb-5 mt-5 grid grid-cols-3 gap-2 rounded-2xl border border-field-soil/10 bg-white/70 p-1.5 shadow-sm sm:mb-6 sm:mt-7 sm:inline-grid">
           {(
             [
-              { id: 'diagnose', label: 'Diagnose', icon: Sparkles },
-              { id: 'history', label: 'History', icon: HistoryIcon },
-              { id: 'outbreaks', label: 'Outbreaks', icon: MapPin },
+              { id: 'diagnose', label: 'Diagnosis', icon: Sparkles },
+              { id: 'history', label: 'Saved checks', icon: HistoryIcon },
+              { id: 'outbreaks', label: 'Local risk', icon: MapPin },
             ] as const
           ).map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               type="button"
               onClick={() => setActiveView(id)}
-              className={`touch-manipulation min-h-[44px] px-2 sm:px-4 py-2 rounded-xl border text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1.5 sm:gap-2 ${
+              className={`touch-manipulation min-h-[44px] rounded-xl px-2 py-2 text-xs font-semibold transition-all sm:px-4 sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 ${
                 activeView === id
-                  ? 'bg-primary-700 text-white border-primary-700'
-                  : 'bg-white/70 text-slate-700 border-slate-200 hover:bg-white hover:border-primary-300'
+                  ? 'bg-primary-700 text-white shadow-sm'
+                  : 'text-primary-900 hover:bg-primary-50'
               }`}
             >
               <Icon className="w-4 h-4 shrink-0" />
@@ -410,11 +390,11 @@ export default function Home() {
               <section className="surface rounded-2xl p-4 sm:p-6">
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div>
-                    <h2 className="text-base font-semibold text-slate-900">Photo analysis</h2>
-                    <p className="text-sm text-slate-600 mt-1">Best results with a sharp, well-lit close-up.</p>
+                    <h2 className="text-lg font-bold text-primary-900">Check this crop</h2>
+                    <p className="mt-1 text-sm text-field-soil">Use a sharp, well-lit photo of the leaf or damaged area.</p>
                   </div>
-                  <div className="text-xs text-slate-500">
-                    Step <span className="font-semibold text-slate-700">1</span> of 3
+                  <div className="rounded-full border border-field-soil/10 bg-field-cream px-3 py-1 text-xs font-semibold text-field-soil">
+                    Step <span className="font-bold text-primary-800">1</span> of 3
                   </div>
                 </div>
 
@@ -422,26 +402,26 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => setPhotoMode('single')}
-                    className={`touch-manipulation min-h-[44px] px-4 py-2 rounded-xl border text-sm font-semibold flex items-center gap-2 transition-all ${
+                    className={`touch-manipulation min-h-[44px] rounded-xl border px-4 py-2 text-sm font-semibold flex items-center gap-2 transition-all ${
                       photoMode === 'single'
-                        ? 'bg-primary-700 text-white border-primary-700'
-                        : 'bg-white text-slate-700 border-slate-200 hover:border-primary-300'
+                        ? 'border-primary-700 bg-primary-700 text-white shadow-sm'
+                        : 'border-field-soil/20 bg-white text-primary-900 hover:border-primary-300 hover:bg-primary-50'
                     }`}
                   >
                     <Camera className="w-4 h-4" />
-                    Single photo
+                    One photo
                   </button>
                   <button
                     type="button"
                     onClick={() => setPhotoMode('compare')}
-                    className={`touch-manipulation min-h-[44px] px-4 py-2 rounded-xl border text-sm font-semibold flex items-center gap-2 transition-all ${
+                    className={`touch-manipulation min-h-[44px] rounded-xl border px-4 py-2 text-sm font-semibold flex items-center gap-2 transition-all ${
                       photoMode === 'compare'
-                        ? 'bg-primary-700 text-white border-primary-700'
-                        : 'bg-white text-slate-700 border-slate-200 hover:border-primary-300'
+                        ? 'border-primary-700 bg-primary-700 text-white shadow-sm'
+                        : 'border-field-soil/20 bg-white text-primary-900 hover:border-primary-300 hover:bg-primary-50'
                     }`}
                   >
                     <ArrowLeftRight className="w-4 h-4" />
-                    Past vs current
+                    Compare field change
                   </button>
                 </div>
 
@@ -459,10 +439,10 @@ export default function Home() {
                           type="button"
                           onClick={handlePredict}
                           disabled={!selectedImage || loading}
-                          className="touch-manipulation min-h-[48px] w-full md:max-w-md inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-primary-700 text-white font-semibold shadow-sm hover:bg-primary-800 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors"
+                          className="btn-primary w-full md:max-w-md"
                         >
                           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
-                          {loading ? 'Analyzing…' : 'Run analysis'}
+                          {loading ? 'Checking photo...' : 'Check crop health'}
                         </button>
                       </div>
                     </>
@@ -504,9 +484,9 @@ export default function Home() {
               <TipsAndGuidelines />
 
               <div className="surface rounded-2xl p-4 sm:p-6">
-                <h3 className="text-base font-semibold text-slate-900">Alerts</h3>
-                <p className="text-sm text-slate-600 mt-1">
-                  Register a farm location to receive outbreak notifications within 250 miles.
+                <h3 className="text-base font-bold text-primary-900">Watch my area</h3>
+                <p className="mt-1 text-sm leading-6 text-field-soil">
+                  Save your farm location to see crop issue alerts reported within 250 miles.
                 </p>
                 <div className="mt-4 sm:hidden space-y-3">
                   {farmerProfile && (
@@ -526,14 +506,14 @@ export default function Home() {
         )}
 
         {activeView === 'outbreaks' && (
-          <section className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-6 shadow-sm">
+          <section className="surface rounded-2xl p-4 sm:p-6">
             <div className="mb-4">
-              <h2 className="text-base font-semibold text-slate-900">Outbreak map</h2>
-              <p className="text-sm text-slate-600 mt-1">
-                Tap or click to report a potential outbreak and help track disease spread.
+              <h2 className="text-lg font-bold text-primary-900">Nearby crop issues</h2>
+              <p className="mt-1 text-sm leading-6 text-field-soil">
+                Tap a field area to report what you are seeing and help nearby farms spot risk earlier.
               </p>
             </div>
-            <div className="bg-white rounded-xl p-2 sm:p-4 border border-slate-200 -mx-1 sm:mx-0">
+            <div className="-mx-1 rounded-xl border border-field-soil/10 bg-field-cream p-2 sm:mx-0 sm:p-4">
               <USOutbreakMap
                 reports={outbreakReports}
                 onReportSubmit={handleOutbreakReport}
@@ -543,8 +523,8 @@ export default function Home() {
           </section>
         )}
 
-        <footer className="text-center mt-10 mb-6 text-slate-500">
-          <p className="text-xs">Models: EfficientNet / TensorFlow Lite</p>
+        <footer className="mt-10 mb-6 border-t border-field-soil/10 pt-5 text-center text-field-soil">
+          <p className="text-xs">CropIntel supports scouting decisions. Confirm treatment choices with local agronomy guidance.</p>
         </footer>
       </div>
     </main>

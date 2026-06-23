@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { WorldMap } from '@/components/ui/world-map'
-import { MapPin, AlertTriangle, X, Plus, Save } from 'lucide-react'
+import { MapPin, AlertTriangle, X, Save } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 interface OutbreakReport {
@@ -56,7 +56,7 @@ export default function OutbreakMap() {
 
   const handleSubmitReport = () => {
     if (!selectedLocation || !formData.crop || !formData.disease) {
-      alert('Please fill in all required fields')
+      alert('Please add the crop and what the issue looks like.')
       return
     }
 
@@ -96,15 +96,15 @@ export default function OutbreakMap() {
   }
 
   return (
-    <div className="min-h-screen min-h-[100dvh] bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 py-6 sm:py-8 px-3 sm:px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
+    <div className="min-h-screen min-h-[100dvh] bg-field-cream px-3 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-4 sm:py-8">
       <div className="container mx-auto max-w-7xl">
         {/* Header */}
         <div className="mb-8 text-center">
           <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-3">
-            Outbreak Reporting System
+            Local crop issue map
           </h1>
           <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-            Click on the map to report potential crop disease outbreaks in your area
+            Tap the map where you are seeing crop trouble so nearby farms can watch their fields.
           </p>
         </div>
 
@@ -129,7 +129,7 @@ export default function OutbreakMap() {
             <div className="absolute bottom-4 left-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg z-20">
               <p className="text-sm font-semibold flex items-center gap-2">
                 <MapPin className="w-4 h-4" />
-                Click on map to report outbreak
+                Tap map to report crop trouble
               </p>
             </div>
           </div>
@@ -155,7 +155,7 @@ export default function OutbreakMap() {
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
                     <AlertTriangle className="w-6 h-6 text-orange-500" />
-                    Report Outbreak
+                    Report crop trouble
                   </h2>
                   <button
                     onClick={() => {
@@ -171,33 +171,33 @@ export default function OutbreakMap() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-2">
-                      Crop Type *
+                      Crop affected *
                     </label>
                     <input
                       type="text"
                       value={formData.crop}
                       onChange={(e) => setFormData({ ...formData, crop: e.target.value })}
-                      placeholder="e.g., Corn, Wheat, Rice"
+                      placeholder="Corn, wheat, rice"
                       className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-2">
-                      Disease Name *
+                      What it looks like *
                     </label>
                     <input
                       type="text"
                       value={formData.disease}
                       onChange={(e) => setFormData({ ...formData, disease: e.target.value })}
-                      placeholder="e.g., Rust, Blight, Mosaic"
+                      placeholder="Rust, blight, yellowing"
                       className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-2">
-                      Severity *
+                      How bad is it? *
                     </label>
                     <select
                       value={formData.severity}
@@ -217,12 +217,12 @@ export default function OutbreakMap() {
 
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-2">
-                      Description
+                      Field notes
                     </label>
                     <textarea
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      placeholder="Additional details about the outbreak..."
+                      placeholder="How much of the field is affected? When did you notice it?"
                       rows={3}
                       className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
@@ -233,7 +233,7 @@ export default function OutbreakMap() {
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg"
                   >
                     <Save className="w-5 h-5" />
-                    Submit Report
+                    Share report
                   </button>
                 </div>
             </div>
@@ -244,13 +244,13 @@ export default function OutbreakMap() {
         <div className="bg-white rounded-xl shadow-lg p-6 border border-slate-200">
           <h2 className="text-2xl font-bold text-slate-900 mb-4 flex items-center gap-2">
             <MapPin className="w-6 h-6 text-blue-600" />
-            Reported Outbreaks ({reports.length})
+            Shared crop reports ({reports.length})
           </h2>
 
           {reports.length === 0 ? (
             <div className="text-center py-12 text-slate-500">
               <MapPin className="w-12 h-12 mx-auto mb-4 text-slate-300" />
-              <p>No outbreaks reported yet. Click on the map to report one.</p>
+              <p>No crop issues reported yet. Tap the map to share what you are seeing.</p>
             </div>
           ) : (
             <div className="space-y-4">
