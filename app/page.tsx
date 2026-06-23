@@ -338,19 +338,17 @@ export default function Home() {
               </div>
             </div>
 
-            <nav className="hidden md:flex items-center gap-2">
-              <a
-                href="/"
-                className="px-3 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-              >
-                Diagnose
-              </a>
-            </nav>
-
             <div className="flex items-center gap-1.5 sm:gap-2 flex-nowrap shrink-0 justify-end">
               {farmerProfile && (
                 <FarmerVerificationBadge verified={farmerProfile.verifiedFarmer} compact />
               )}
+              <button
+                type="button"
+                onClick={() => setActiveView('diagnose')}
+                className="hidden items-center gap-2 rounded-xl bg-primary-700 px-4 py-2 font-semibold text-white shadow-sm transition-colors hover:bg-primary-800 sm:flex"
+              >
+                Diagnose
+              </button>
               <div className="hidden sm:block">
                 <FarmerRegistration onRegister={handleFarmerRegister} crops={Object.keys(CROPS)} />
               </div>
