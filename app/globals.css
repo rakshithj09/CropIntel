@@ -79,8 +79,7 @@ img:not([src]) {
 }
 
 /* Ensure image containers don't collapse */
-.image-container,
-[class*="image"] {
+.image-container {
   min-height: 100px;
 }
 
