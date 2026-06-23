@@ -22,7 +22,7 @@ import { CROPS } from '@/lib/crops'
 import type { OutbreakReport } from '@/lib/outbreakReport'
 import { loadFarmerProfile, saveFarmerProfile, type StoredFarmerProfile } from '@/lib/farmerProfile'
 import {
-  applyStateDiseaseFilter,
+  applyRegionalPrior,
   getRelevantDiseasesForCropState,
   type PredictionPayload,
 } from '@/lib/stateDiseaseMap'
@@ -193,13 +193,13 @@ export default function Home() {
   }, [])
 
   const applyRegionalFilter = useCallback(
-    (raw: PredictionPayload) => applyStateDiseaseFilter(raw, selectedCrop, selectedState),
+    (raw: PredictionPayload) => applyRegionalPrior(raw, selectedCrop, selectedState),
     [selectedCrop, selectedState]
   )
 
   const regionNote =
     getRelevantDiseasesForCropState(selectedCrop, selectedState) !== null
-      ? `Using common ${selectedCrop} disease patterns for ${selectedState}. If this does not match what you see, check the other possible matches below.`
+      ? `Regional adjustment: results are gently nudged toward diseases common for ${selectedCrop} in ${selectedState} (illustrative; capped so it never overrides the model). Other states or crops show the model's raw output.`
       : undefined
 
   const handlePredict = async () => {
