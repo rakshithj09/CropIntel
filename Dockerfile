@@ -37,6 +37,10 @@ RUN mkdir -p ml/models data \
 
 ENV NODE_ENV=production
 ENV PYTHONUNBUFFERED=1
+# Inference service bind address. Default 127.0.0.1 keeps it internal (the
+# all-in-one VPS deploy proxies it via the Next.js app). Set to 0.0.0.0 to
+# expose it directly — e.g. on Hugging Face as a backend for a Vercel frontend.
+ENV INFERENCE_BIND_HOST=127.0.0.1
 
 EXPOSE 3050
 
