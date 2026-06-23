@@ -35,8 +35,11 @@ def _find_models_root(extracted: Path) -> Path | None:
         subs = {d.name for d in p.iterdir() if d.is_dir()}
         return bool(subs & crops)
 
+    # Include `extracted` itself: rglob("*") yields only descendants, so a
+    # top-level layout (crop folders at the zip root) would otherwise be missed
+    # — the extraction dir is the only one whose children are crop names.
     candidates: list[Path] = []
-    for p in extracted.rglob("*"):
+    for p in (extracted, *extracted.rglob("*")):
         if p.is_dir() and has_crop_children(p):
             candidates.append(p)
     if not candidates:

@@ -25,7 +25,6 @@ import { NextRequest } from 'next/server'
 import { rateLimit, getRateLimitHeaders } from '@/lib/security/rateLimiter'
 import { validatePredictionRequest } from '@/lib/security/validation'
 import { createSecureResponse, addSecurityHeaders } from '@/lib/security/headers'
-import { getInferenceUrl } from '@/lib/server/inferenceUrl'
 import { ZodError } from 'zod'
 
 /**
@@ -45,6 +44,9 @@ const ALLOWED_MIME_TYPES = [
   'image/webp',
   'image/gif',
 ]
+
+/** Base URL of the Python inference service (never exposed publicly). */
+const INFERENCE_URL = process.env.INFERENCE_URL || 'http://127.0.0.1:8000'
 
 /** Upstream timeout — model inference is fast; this guards a hung service. */
 const INFERENCE_TIMEOUT_MS = 30_000
@@ -85,17 +87,6 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    let inferenceUrl: string
-    try {
-      inferenceUrl = getInferenceUrl()
-    } catch (error: any) {
-      console.error('Inference service misconfigured:', error)
-      return createSecureResponse(
-        { error: 'Prediction service is not configured. Please set INFERENCE_URL.' },
-        503
-      )
-    }
-
     // ========== INPUT VALIDATION ==========
     // Parse and validate form data using schema-based validation
     // OWASP: Prevents injection attacks via strict validation
@@ -138,7 +129,7 @@ export async function POST(request: NextRequest) {
 
     let upstream: Response
     try {
-      upstream = await fetch(`${inferenceUrl}/predict`, {
+      upstream = await fetch(`${INFERENCE_URL}/predict`, {
         method: 'POST',
         body: upstreamForm,
         signal: AbortSignal.timeout(INFERENCE_TIMEOUT_MS),
