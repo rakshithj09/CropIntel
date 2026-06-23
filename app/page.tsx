@@ -521,7 +521,7 @@ export default function Home() {
         )}
 
         <footer className="mt-10 mb-6 border-t border-field-soil/10 pt-5 text-center text-field-soil">
-          <p className="text-xs">CropIntel supports scouting decisions. Confirm treatment choices with local agronomy guidance.</p>
+          <p className="text-xs">Models: EfficientNet / TensorFlow Lite</p>
         </footer>
       </div>
     </main>
