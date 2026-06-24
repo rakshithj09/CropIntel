@@ -18,6 +18,14 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: 'CropIntel - Disease Detection',
   description: 'Check crop leaf photos, save farm areas, and watch nearby crop issue reports.',
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icon.png', type: 'image/png', sizes: '512x512' },
+    ],
+    shortcut: '/favicon.ico',
+    apple: '/icon.png',
+  },
 }
 
 export const viewport: Viewport = {
