@@ -63,6 +63,12 @@ Open [http://localhost:3050](http://localhost:3050). The UI calls `/api/predict`
 which forwards to the inference service at `INFERENCE_URL` (default
 `http://127.0.0.1:8000`).
 
+For Vercel, add this server-side environment variable:
+
+```bash
+INFERENCE_URL=https://jaithrap-cropintel.hf.space/api
+```
+
 ## Train it yourself (needs Kaggle data)
 
 See [ml/README.md](ml/README.md) for the Kaggle API setup and training scripts
