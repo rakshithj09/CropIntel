@@ -140,7 +140,7 @@ export default function HealthComparisonPanel({ crop, applyRegionalFilter }: Pro
             onImageSelect={onPastSelect}
             onClear={clearPast}
             title="Earlier field photo"
-            hint="Use an old photo from this crop or field."
+            hint="Use an old photo from a crop or field."
           />
         </div>
         <div>
