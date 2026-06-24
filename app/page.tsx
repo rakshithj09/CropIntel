@@ -184,6 +184,20 @@ export default function Home() {
   ])
   const [farmerLocation, setFarmerLocation] = useState<{ lat: number; lng: number; crops: string[] } | null>(null)
 
+  // Hide decorative background when scrolled to the very top.
+  const [showBackground, setShowBackground] = useState(false)
+
+  useEffect(() => {
+    const onScroll = () => {
+      // show background only when scrolled down
+      setShowBackground(window.scrollY > 0)
+    }
+    // initialize based on current scroll position (useful if page wasn't loaded at top)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
   useEffect(() => {
     const p = loadFarmerProfile()
     if (p) {
@@ -317,7 +331,12 @@ export default function Home() {
 
   return (
     <main className="cropintel-shell relative min-h-screen min-h-[100dvh] overflow-hidden px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-24 sm:pt-28">
-      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div
+        aria-hidden={!showBackground}
+        className={`pointer-events-none absolute inset-0 overflow-hidden transition-opacity duration-300 ${
+          showBackground ? 'opacity-100' : 'opacity-0'
+        }`}
+      >
         <div className="blob bg-grad-1" style={{ width: 560, height: 560, top: -140, left: -100 }} />
         <div className="blob bg-grad-2" style={{ width: 480, height: 480, top: 40, right: -120, opacity: 0.5 }} />
         <div className="blob bg-grad-3" style={{ width: 420, height: 420, bottom: -160, left: '35%', opacity: 0.45 }} />
