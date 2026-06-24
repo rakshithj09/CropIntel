@@ -59,7 +59,7 @@ div[title*="For development purposes only"] {
   --color-grad-1: #d6e7ce;
   --color-grad-2: #cce2dd;
   --color-grad-3: #ecdcc2;
-  --font-display: "Bricolage Grotesque", "Satoshi", ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-bricolage), "Satoshi", ui-sans-serif, system-ui, sans-serif;
   --font-body: "Satoshi", "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Space Grotesk", ui-monospace, SFMono-Regular, Menlo, monospace;
   color-scheme: light;
@@ -258,10 +258,14 @@ button.rounded-t-xl {
 .cropintel-brand {
   min-height: 1.75rem;
   padding: 0;
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 1.125rem;
   font-weight: 800;
   line-height: 1.4;
+}
+
+.cropintel-brand .font-display {
+  font-family: var(--font-body);
 }
 
 .cropintel-menu-link {
