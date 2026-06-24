@@ -186,11 +186,15 @@ export default function Home() {
 
   // Hide decorative background when scrolled to the very top.
   const [showBackground, setShowBackground] = useState(false)
+  // Track whether the page has been scrolled a bit (used to toggle nav styling)
+  const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
     const onScroll = () => {
-      // show background only when scrolled down
+      // show decorative background when scrolled any amount
       setShowBackground(window.scrollY > 0)
+      // mark "scrolled" once user has moved a small amount (threshold = 12px)
+      setScrolled(window.scrollY > 12)
     }
     // initialize based on current scroll position (useful if page wasn't loaded at top)
     onScroll()
@@ -343,7 +347,11 @@ export default function Home() {
       </div>
 
       <header className="fixed inset-x-0 top-0 z-50 px-4 py-3">
-        <nav className="glass mx-auto flex max-w-6xl items-center justify-between rounded-full px-5 py-3 transition-all duration-300">
+        <nav
+          className={`mx-auto flex max-w-6xl items-center justify-between rounded-full px-5 py-3 transition-all duration-300 ${
+            scrolled ? 'glass' : 'border border-transparent'
+          }`}
+        >
             <button
               type="button"
               onClick={() => setActiveView('diagnose')}
