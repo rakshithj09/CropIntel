@@ -88,6 +88,40 @@ gh release upload v1 cropintel-models-mobile.zip -R rakshithj09/CropIntel --clob
 - `docker-compose.prod.yml`, `docker/`, `docs/DEPLOYMENT.md` — production deploy
 - `tests/` — pytest suite (`.github/workflows/ci.yml` runs web + Python checks)
 
+## Troubleshooting: port 3050 already in use
+
+If you see "Error: listen EADDRINUSE: address already in use 0.0.0.0:3050" when running npm run dev, either stop the process using port 3050 or start the dev server on another port.
+
+Options:
+
+1) Find and kill the process (macOS / Linux)
+```bash
+# show process listening on port 3050
+lsof -nP -iTCP:3050 -sTCP:LISTEN
+
+# kill by PID (replace <PID> with the number from the previous command)
+kill -9 <PID>
+```
+
+2) One‑liner to kill the port (cross‑platform via npx)
+```bash
+npx kill-port 3050
+```
+
+3) Start the dev server on a different port
+```bash
+# pass a different port to next
+npm run dev -- -p 3051
+
+# or set PORT env then run
+PORT=3051 npm run dev
+```
+
+After freeing the port or choosing another port, re-run:
+```bash
+npm run dev
+```
+
 ## License
 
 See repository.
