@@ -38,7 +38,7 @@ export default function PredictionResults({
       return 'bg-amber-50 text-amber-900 border-amber-200'
     }
     if (prediction.is_healthy) {
-      return 'bg-emerald-50 text-emerald-900 border-emerald-200'
+      return 'bg-primary-50 text-primary-900 border-primary-200'
     }
     if (prediction.meets_threshold) {
       return 'bg-rose-50 text-rose-900 border-rose-200'

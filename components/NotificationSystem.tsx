@@ -316,14 +316,18 @@ export default function NotificationSystem({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="touch-manipulation relative flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border-2 border-slate-200 bg-white p-2 shadow-sm transition-all hover:border-primary-400 hover:shadow-md"
+        className={`touch-manipulation relative flex h-9 w-9 items-center justify-center rounded-full border bg-white/70 shadow-sm backdrop-blur transition-all hover:-translate-y-0.5 hover:shadow-md ${
+          isOpen
+            ? 'border-primary-300 text-primary-700'
+            : 'border-field-soil/15 text-primary-900 hover:border-primary-300 hover:text-primary-700'
+        }`}
         aria-label="Crop alerts"
         aria-expanded={isOpen}
         aria-haspopup="dialog"
       >
-        <Bell className="h-6 w-6 text-slate-700" />
+        <Bell className="h-5 w-5" />
         {unreadCount > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-red-600 text-xs font-bold text-white">
+          <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full border-2 border-white bg-red-600 px-1 text-[10px] font-bold leading-none text-white shadow-sm">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -420,7 +424,7 @@ export default function NotificationSystem({
                                       <span
                                         className={`inline-block rounded-md border px-2 py-0.5 font-bold ${
                                           outbreak.reporterVerified
-                                            ? 'border-emerald-200 bg-emerald-100 text-emerald-900'
+                                            ? 'border-primary-200 bg-primary-100 text-primary-900'
                                             : 'border-slate-200 bg-slate-100 text-slate-700'
                                         }`}
                                       >
@@ -443,7 +447,7 @@ export default function NotificationSystem({
                                 <button
                                   type="button"
                                   onClick={() => markAsRead(notification.id)}
-                                  className="rounded-lg p-1.5 text-green-700 transition-colors hover:bg-white"
+                                  className="rounded-lg p-1.5 text-primary-700 transition-colors hover:bg-white"
                                   title="Mark as read"
                                 >
                                   <Check className="h-4 w-4" />

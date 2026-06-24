@@ -91,7 +91,7 @@ export default function OutbreakMap() {
       case 'low':
         return 'text-yellow-600 bg-yellow-50 border-yellow-200'
       default:
-        return 'text-gray-600 bg-gray-50 border-gray-200'
+        return 'text-slate-600 bg-slate-50 border-slate-200'
     }
   }
 
@@ -126,7 +126,7 @@ export default function OutbreakMap() {
                 </p>
               </div>
             )}
-            <div className="absolute bottom-4 left-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg z-20">
+            <div className="absolute bottom-4 left-4 bg-primary-600 text-white px-4 py-2 rounded-lg shadow-lg z-20">
               <p className="text-sm font-semibold flex items-center gap-2">
                 <MapPin className="w-4 h-4" />
                 Tap map to report crop trouble
@@ -178,7 +178,7 @@ export default function OutbreakMap() {
                       value={formData.crop}
                       onChange={(e) => setFormData({ ...formData, crop: e.target.value })}
                       placeholder="Corn, wheat, rice"
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     />
                   </div>
 
@@ -191,7 +191,7 @@ export default function OutbreakMap() {
                       value={formData.disease}
                       onChange={(e) => setFormData({ ...formData, disease: e.target.value })}
                       placeholder="Rust, blight, yellowing"
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     />
                   </div>
 
@@ -207,7 +207,7 @@ export default function OutbreakMap() {
                           severity: e.target.value as 'low' | 'medium' | 'high',
                         })
                       }
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     >
                       <option value="low">Low</option>
                       <option value="medium">Medium</option>
@@ -224,13 +224,13 @@ export default function OutbreakMap() {
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       placeholder="How much of the field is affected? When did you notice it?"
                       rows={3}
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     />
                   </div>
 
                   <button
                     onClick={handleSubmitReport}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg"
+                    className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg"
                   >
                     <Save className="w-5 h-5" />
                     Share report
@@ -243,7 +243,7 @@ export default function OutbreakMap() {
         {/* Reports List */}
         <div className="bg-white rounded-xl shadow-lg p-6 border border-slate-200">
           <h2 className="text-2xl font-bold text-slate-900 mb-4 flex items-center gap-2">
-            <MapPin className="w-6 h-6 text-blue-600" />
+            <MapPin className="w-6 h-6 text-primary-600" />
             Shared crop reports ({reports.length})
           </h2>
 
