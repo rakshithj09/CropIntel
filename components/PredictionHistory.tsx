@@ -27,6 +27,7 @@ interface PredictionHistoryProps {
 export default function PredictionHistory({ onSelectHistory }: PredictionHistoryProps) {
   const [history, setHistory] = useState<PredictionRecord[]>([])
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [isConfirmingClear, setIsConfirmingClear] = useState(false)
 
   useEffect(() => {
     // Load history from localStorage (only in browser)
@@ -50,11 +51,10 @@ export default function PredictionHistory({ onSelectHistory }: PredictionHistory
 
   const clearHistory = () => {
     if (typeof window === 'undefined') return
-    if (confirm('Are you sure you want to clear all prediction history?')) {
-      localStorage.removeItem('cropintel_history')
-      setHistory([])
-      setExpandedId(null)
-    }
+    localStorage.removeItem('cropintel_history')
+    setHistory([])
+    setExpandedId(null)
+    setIsConfirmingClear(false)
   }
 
   if (history.length === 0) {
@@ -83,7 +83,7 @@ export default function PredictionHistory({ onSelectHistory }: PredictionHistory
         <div className="flex gap-3">
           <button
             type="button"
-            onClick={clearHistory}
+            onClick={() => setIsConfirmingClear(true)}
             className="inline-flex min-h-[40px] items-center justify-center gap-2 rounded-xl border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-700 transition-colors hover:bg-rose-50"
           >
             <Trash2 className="h-4 w-4" />
@@ -91,6 +91,35 @@ export default function PredictionHistory({ onSelectHistory }: PredictionHistory
           </button>
         </div>
       </div>
+
+      {isConfirmingClear && (
+        <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50/80 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-bold text-rose-900">Clear all saved checks?</p>
+              <p className="mt-1 text-sm text-rose-800">
+                This removes every saved field check from this browser.
+              </p>
+            </div>
+            <div className="flex shrink-0 gap-2">
+              <button
+                type="button"
+                onClick={() => setIsConfirmingClear(false)}
+                className="rounded-xl border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-800 transition-colors hover:bg-rose-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={clearHistory}
+                className="rounded-xl bg-rose-700 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-rose-800"
+              >
+                Clear checks
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="max-h-96 space-y-3 overflow-y-auto pr-1">
         {history.map((record) => {
