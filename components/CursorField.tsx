@@ -19,13 +19,16 @@ export default function CursorField() {
   const ringRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    // Accept any-pointer too — some external-monitor / dock setups report the
-    // primary pointer as coarse even with a mouse, which would disable the cursor.
+    // Activate whenever a mouse-like pointer exists (pointer/any-pointer fine,
+    // or hover capability). Reduced-motion must NOT remove the cursor; it only
+    // drops the trailing lag (handled in the tick below).
     const finePointer =
       window.matchMedia('(pointer: fine)').matches ||
-      window.matchMedia('(any-pointer: fine)').matches
+      window.matchMedia('(any-pointer: fine)').matches ||
+      window.matchMedia('(hover: hover)').matches
+    if (!finePointer) return
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (!finePointer || reduced) return
+    const lerp = reduced ? 1 : 0.18
 
     const dot = dotRef.current
     const ring = ringRef.current
@@ -68,8 +71,8 @@ export default function CursorField() {
     let raf = 0
     const tick = () => {
       raf = requestAnimationFrame(tick)
-      ringPos.x += (target.x - ringPos.x) * 0.18
-      ringPos.y += (target.y - ringPos.y) * 0.18
+      ringPos.x += (target.x - ringPos.x) * lerp
+      ringPos.y += (target.y - ringPos.y) * lerp
       dot.style.transform = `translate(${target.x}px, ${target.y}px) translate(-50%, -50%)`
       const ringScale = (pressed ? 0.7 : 1) * (overInteractive ? 1.7 : 1)
       ring.style.transform = `translate(${ringPos.x}px, ${ringPos.y}px) translate(-50%, -50%) scale(${ringScale})`
