@@ -97,12 +97,12 @@ export default function CursorField() {
       <div
         ref={dotRef}
         aria-hidden
-        className="cursor-dot pointer-events-none fixed left-0 top-0 z-[9999] hidden h-2 w-2 rounded-full opacity-0 md:block"
+        className="cursor-dot pointer-events-none fixed left-0 top-0 z-[100000] hidden h-2 w-2 rounded-full opacity-0 md:block"
       />
       <div
         ref={ringRef}
         aria-hidden
-        className="cursor-ring pointer-events-none fixed left-0 top-0 z-[9999] hidden h-9 w-9 rounded-full border opacity-0 md:block"
+        className="cursor-ring pointer-events-none fixed left-0 top-0 z-[100000] hidden h-9 w-9 rounded-full border opacity-0 md:block"
       />
     </>
   )
