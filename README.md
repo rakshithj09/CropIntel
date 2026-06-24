@@ -20,10 +20,10 @@ container runs the web app and a persistent Python inference service together.
 ## Quick start (run the whole thing)
 
 You do **not** need Kaggle, training, or any model files — the trained models
-(~38 MB) are fetched automatically from the GitHub Release on first start.
+(~38 MB) are fetched automatically from the configured private model bundle on first start.
 
 ```bash
-git clone https://github.com/rakshithj09/CropIntel.git
+git clone <private-cropintel-repository-url>
 cd CropIntel
 docker compose -f docker-compose.prod.yml up -d --build
 curl -fsS http://localhost:3050/api/health    # {"web":"ok","inference":{"ready":true,...}}
@@ -128,6 +128,6 @@ After freeing the port or choosing another port, re-run:
 npm run dev
 ```
 
-## License
+## Usage
 
-See repository.
+This project is proprietary and maintained privately. All rights reserved.
