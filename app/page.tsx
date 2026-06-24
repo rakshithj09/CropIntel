@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import Image from 'next/image'
-import { MapPin, Sparkles, History as HistoryIcon, ArrowRight, Loader2, Camera, ArrowLeftRight } from 'lucide-react'
+import { ArrowRight, Loader2, Camera, ArrowLeftRight } from 'lucide-react'
 import ImageUpload from '@/components/ImageUpload'
 import CropSelector from '@/components/CropSelector'
 import StateSelector from '@/components/StateSelector'
@@ -47,6 +47,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null)
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [activeView, setActiveView] = useState<'diagnose' | 'history' | 'outbreaks'>('diagnose')
+  const [scrolled, setScrolled] = useState(false)
   // Initialize with a sample outbreak in Russellville, Arkansas
   const [outbreakReports, setOutbreakReports] = useState<OutbreakReport[]>([
     {
@@ -192,6 +193,13 @@ export default function Home() {
     }
   }, [])
 
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
   const applyRegionalFilter = useCallback(
     (raw: PredictionPayload) => applyRegionalPrior(raw, selectedCrop, selectedState),
     [selectedCrop, selectedState]
@@ -316,39 +324,62 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen min-h-[100dvh] px-3 py-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-5 sm:py-5">
-      <div className="mx-auto max-w-7xl">
-        {/* Top bar */}
-        <header className="glass sticky top-0 z-40 -mx-3 rounded-none border-x-0 border-t-0 px-3 pb-3 pt-[max(0.5rem,env(safe-area-inset-top))] sm:-mx-5 sm:rounded-b-2xl sm:border-x sm:px-5">
-          <div className="mx-auto max-w-7xl flex items-center justify-between gap-2 sm:gap-3">
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-primary-200 bg-primary-700 text-white shadow-sm">
+    <main className="relative min-h-screen min-h-[100dvh] overflow-hidden px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-24 sm:pt-28">
+      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="blob bg-grad-1" style={{ width: 560, height: 560, top: -140, left: -100 }} />
+        <div className="blob bg-grad-2" style={{ width: 480, height: 480, top: 40, right: -120, opacity: 0.5 }} />
+        <div className="blob bg-grad-3" style={{ width: 420, height: 420, bottom: -160, left: '35%', opacity: 0.45 }} />
+      </div>
+
+      <header className="fixed inset-x-0 top-0 z-50 px-4 py-3">
+        <nav
+          className={`mx-auto flex max-w-6xl items-center justify-between gap-3 rounded-full px-4 py-3 transition-all duration-300 sm:px-5 ${
+            scrolled ? 'glass' : 'border border-transparent'
+          }`}
+        >
+            <button
+              type="button"
+              onClick={() => setActiveView('diagnose')}
+              className="flex min-w-0 items-center gap-2 text-left"
+            >
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-leaf">
                 <Image
                   src="/brand/wheat-mark-transparent.png"
                   alt="CropIntel"
-                  width={22}
-                  height={44}
-                  className="opacity-95 object-contain drop-shadow-[0_1px_0_rgba(0,0,0,0.08)]"
+                  width={20}
+                  height={20}
+                  className="h-5 w-auto object-contain opacity-95 drop-shadow-[0_1px_0_rgba(0,0,0,0.08)]"
                   priority
                 />
-              </div>
-              <div className="leading-tight min-w-0">
-                <div className="truncate text-base font-bold text-primary-900">CropIntel</div>
-                <div className="text-[11px] leading-snug text-field-soil sm:text-xs">Crop checks and local alerts</div>
-              </div>
+              </span>
+              <span className="font-display truncate text-lg font-extrabold tracking-tight text-ink">CropIntel</span>
+            </button>
+
+            <div className="hidden items-center gap-8 md:flex">
+              {(
+                [
+                  { id: 'diagnose', label: 'Diagnosis' },
+                  { id: 'history', label: 'Saved checks' },
+                  { id: 'outbreaks', label: 'Local risk' },
+                ] as const
+              ).map(({ id, label }) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setActiveView(id)}
+                  className={`text-sm font-medium transition-colors ${
+                    activeView === id ? 'text-ink' : 'text-ink-soft hover:text-ink'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
 
-            <div className="flex items-center gap-1.5 sm:gap-2 flex-nowrap shrink-0 justify-end">
+            <div className="flex shrink-0 items-center justify-end gap-1.5 sm:gap-2">
               {farmerProfile && (
                 <FarmerVerificationBadge verified={farmerProfile.verifiedFarmer} compact />
               )}
-              <button
-                type="button"
-                onClick={() => setActiveView('diagnose')}
-                className="btn-primary hidden min-h-[42px] px-4 py-2 sm:flex"
-              >
-                Check crop
-              </button>
               <div className="hidden sm:block">
                 <FarmerRegistration onRegister={handleFarmerRegister} crops={Object.keys(CROPS)} />
               </div>
@@ -356,29 +387,28 @@ export default function Home() {
                 <NotificationSystem outbreaks={outbreakReports} currentFarmerLocation={farmerLocation || undefined} />
               </div>
             </div>
-          </div>
-        </header>
+        </nav>
+      </header>
 
-        {/* Views */}
-        <div className="mb-5 mt-5 grid grid-cols-3 gap-2 rounded-2xl border border-field-soil/10 bg-white/70 p-1.5 shadow-sm sm:mb-6 sm:mt-7 sm:inline-grid">
+      <div className="relative z-10 mx-auto max-w-6xl">
+        <div className="mb-6 grid grid-cols-3 gap-2 rounded-full border border-white/70 bg-surface/60 p-1.5 shadow-sm backdrop-blur md:hidden">
           {(
             [
-              { id: 'diagnose', label: 'Diagnosis', icon: Sparkles },
-              { id: 'history', label: 'Saved checks', icon: HistoryIcon },
-              { id: 'outbreaks', label: 'Local risk', icon: MapPin },
+              { id: 'diagnose', label: 'Diagnosis' },
+              { id: 'history', label: 'Saved checks' },
+              { id: 'outbreaks', label: 'Local risk' },
             ] as const
-          ).map(({ id, label, icon: Icon }) => (
+          ).map(({ id, label }) => (
             <button
               key={id}
               type="button"
               onClick={() => setActiveView(id)}
-              className={`touch-manipulation min-h-[44px] rounded-xl px-2 py-2 text-xs font-semibold transition-all sm:px-4 sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 ${
+              className={`touch-manipulation min-h-[40px] rounded-full px-2 py-2 text-center text-[11px] font-semibold transition-all sm:text-sm ${
                 activeView === id
-                  ? 'bg-primary-700 text-white shadow-sm'
-                  : 'text-primary-900 hover:bg-primary-50'
+                  ? 'bg-ink text-white shadow-sm'
+                  : 'text-ink-soft hover:bg-white/70 hover:text-ink'
               }`}
             >
-              <Icon className="w-4 h-4 shrink-0" />
               <span className="truncate">{label}</span>
             </button>
           ))}
@@ -399,10 +429,10 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => setPhotoMode('single')}
-                    className={`touch-manipulation min-h-[44px] rounded-xl border px-4 py-2 text-sm font-semibold flex items-center gap-2 transition-all ${
+                    className={`touch-manipulation min-h-[44px] rounded-full border px-4 py-2 text-sm font-semibold flex items-center gap-2 transition-all ${
                       photoMode === 'single'
-                        ? 'border-primary-700 bg-primary-700 text-white shadow-sm'
-                        : 'border-field-soil/20 bg-white text-primary-900 hover:border-primary-300 hover:bg-primary-50'
+                        ? 'border-ink bg-ink text-white shadow-sm'
+                        : 'border-ink/10 bg-surface/70 text-ink hover:border-leaf/30 hover:bg-white'
                     }`}
                   >
                     <Camera className="w-4 h-4" />
@@ -411,10 +441,10 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => setPhotoMode('compare')}
-                    className={`touch-manipulation min-h-[44px] rounded-xl border px-4 py-2 text-sm font-semibold flex items-center gap-2 transition-all ${
+                    className={`touch-manipulation min-h-[44px] rounded-full border px-4 py-2 text-sm font-semibold flex items-center gap-2 transition-all ${
                       photoMode === 'compare'
-                        ? 'border-primary-700 bg-primary-700 text-white shadow-sm'
-                        : 'border-field-soil/20 bg-white text-primary-900 hover:border-primary-300 hover:bg-primary-50'
+                        ? 'border-ink bg-ink text-white shadow-sm'
+                        : 'border-ink/10 bg-surface/70 text-ink hover:border-leaf/30 hover:bg-white'
                     }`}
                   >
                     <ArrowLeftRight className="w-4 h-4" />
