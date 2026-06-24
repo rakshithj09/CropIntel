@@ -1,133 +1,209 @@
----
-title: CropIntel
-emoji: 🌾
-colorFrom: green
-colorTo: blue
-sdk: docker
-app_port: 3050
-pinned: false
----
-
-<!-- The YAML block above configures the Hugging Face Space (Docker SDK,
-     public port 3050). Required by HF; ignored by GitHub. See docs/DEPLOYMENT.md. -->
-
 # CropIntel
 
-Crop leaf-disease classifier for 5 crops (corn, soybean, wheat, rice, tomato),
-EfficientNetB0 → TensorFlow Lite, served behind a Next.js UI. One Docker
-container runs the web app and a persistent Python inference service together.
+CropIntel is a crop leaf-disease classifier (corn, soybean, wheat, rice, tomato) using EfficientNetB0 → TensorFlow Lite, served behind a Next.js UI. The repository includes a small FastAPI inference service (ml/serve) and a Next.js frontend (app/). The project supports two primary run modes: Docker Compose (recommended) and local development (FastAPI + Next.js).
 
-## Quick start (run the whole thing)
+This README is written for other developers: how the code is organized, how to run & debug locally, how models are managed and deployed, CI expectations, and where to look when things break.
 
-You do **not** need Kaggle, training, or any model files — the trained models
-(~38 MB) are fetched automatically from the configured private model bundle on first start.
+Table of contents
+- Overview
+- Architecture & key files
+- Quick start (Docker)
+- Local development (no Docker)
+- API contract (endpoints & payloads)
+- Models & model bundle workflow
+- Testing & CI
+- Debugging & logs
+- Environment variables
+- Deployment options
+- Contributing
+- Troubleshooting
+- License & contacts
 
-```bash
-git clone <private-cropintel-repository-url>
-cd CropIntel
-docker compose -f docker-compose.prod.yml up -d --build
-curl -fsS http://localhost:3050/api/health    # {"web":"ok","inference":{"ready":true,...}}
-```
+## Overview
+CropIntel provides:
+- Browser UI (Next.js, app/) that uploads images to /api/predict.
+- A lightweight inference service (FastAPI in ml/serve) that hosts per-crop TFLite models.
+- Optional outbreak mapping using Google Maps (client-side).
+- Single-container production deployment via docker-compose.prod.yml which runs both web + inference.
 
-Open [http://localhost:3050](http://localhost:3050). That's it.
+## Architecture & key files
+- app/ — Next.js UI (React + Tailwind). API routes live here (app/api/*).
+  - app/page.tsx — main UI page and image upload flow.
+  - app/layout.tsx — global layout, fonts, footer.
+  - app/api/predict/* or app/api/predict/route.ts — Next.js API route which forwards to the inference service.
+- ml/
+  - ml/serve/inference_app.py — FastAPI inference server (loads TFLite models).
+  - ml/inference/ — inference helpers and predictor code.
+  - ml/scripts — model packaging, fetching, and test scripts.
+  - ml/requirements-inference.txt — runtime requirements for inference server.
+- docker-compose.prod.yml — single container setup used in production (web + Python service).
+- docker/ — Dockerfiles and helpers.
+- docs/DEPLOYMENT.md — deployment notes (external).
+- tests/ — pytest for Python + test harness for web where applicable.
+- README.md — this file.
 
-Optional environment (drop a `.env` next to the compose file):
-
-```bash
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=...               # only for the outbreak map
-CROPINTEL_ADMIN_TOKEN=$(openssl rand -hex 16)     # only to guard POST /admin/reload
-CROPINTEL_MODELS_URL=...                           # override the default v1 model bundle
-```
-
-For a real domain + TLS, monitoring, and model promotion/rollback, see
-[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+## Quick start (Docker) — recommended
+- Build & run (single command, will fetch models automatically on first run):
+  ```bash
+  docker compose -f docker-compose.prod.yml up -d --build
+  ```
+- Check health:
+  ```bash
+  curl -fsS http://localhost:3050/api/health
+  ```
+- Open UI:
+  ```
+  http://localhost:3050
+  ```
 
 ## Local development (no Docker)
+Use this for code iteration / debugging the frontend or inference service separately.
 
-The web app forwards predictions to the inference service, so run both:
-
+1) Fetch models (once; saved to ml/models/ and gitignored)
 ```bash
-# 1) fetch models once (into ml/models/, gitignored)
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r ml/requirements-inference.txt
 export CROPINTEL_MODELS_URL='https://github.com/rakshithj09/CropIntel/releases/download/v1/cropintel-models-mobile.zip'
 python3 -m ml.scripts.fetch_models
+```
 
-# 2) start the inference service (terminal A)
+2) Start the FastAPI inference service (terminal A)
+```bash
 python3 -m uvicorn ml.serve.inference_app:app --host 127.0.0.1 --port 8000
-
-# 3) start the web app (terminal B)
-npm install && npm run dev
+# inference service serves inference endpoints. Must be reachable from web API.
 ```
 
-Open [http://localhost:3050](http://localhost:3050). The UI calls `/api/predict`,
-which forwards to the inference service at `INFERENCE_URL` (default
-`http://127.0.0.1:8000`).
-
-For Vercel, add this server-side environment variable:
-
+3) Start the Next.js frontend (terminal B)
 ```bash
-INFERENCE_URL=https://jaithrap-cropintel.hf.space/api
+npm install
+npm run dev    # defaults: next dev -H 0.0.0.0 -p 3050
+# use PORT or CLI to change port: npm run dev -- -p 3051
 ```
 
-## Train it yourself (needs Kaggle data)
+## API contract (what the frontend expects)
+- POST /api/predict (Next.js API route)
+  - Form data: image file under `image`, `crop` string
+  - Returns (JSON):
+    {
+      "disease": "label",
+      "confidence": 0.87,            // 0..1 or percent depending on code
+      "is_healthy": false,
+      "meets_threshold": true,
+      "all_predictions": [ { label, confidence }, ... ]
+    }
+- Next.js /api/predict typically proxies this request to the inference service at INFERENCE_URL (default: http://127.0.0.1:8000). See app/api/predict/route.ts for exact proxy logic.
 
-See [ml/README.md](ml/README.md) for the Kaggle API setup and training scripts
-(`pip install -r ml/requirements.txt`). Models are gated on an **external**
-(out-of-distribution) eval before promotion — see
-`ml/scripts/test_external.py` and `ml/scripts/promote_model.py`.
+## Models & model bundle workflow
+- Models shipped as a model bundle zip (cropintel-models-mobile.zip) in the GitHub release.
+- ml/scripts/fetch_models downloads and unpacks models into ml/models/
+- To retrain:
+  - See ml/training/ for training scripts and ml/scripts/promote_model.py for the promotion pipeline.
+  - Packaging: python3 -m ml.scripts.package_models --tflite-only -o cropintel-models-mobile.zip
+  - Upload to GitHub Releases (gh CLI): gh release upload v1 cropintel-models-mobile.zip -R <owner/repo> --clobber
+- The inference server caches models; to force a reload delete the `.cropintel-fetch-ok` marker in ml/models/ (or restart the container).
 
-## Maintainer: ship updated models
+## Testing & CI
+- Python tests: run pytest from repo root (ensure .venv with ml deps is active):
+  ```bash
+  pytest -q
+  ```
+- Frontend tests: (if present) run npm test
+- CI (see .github/workflows/ci.yml) runs:
+  - Python linters/tests for ml/
+  - TypeScript checks for app/
+  - Integration tests where possible
+- Add tests for any new model preprocessing or inference behavior.
 
-After training/promoting, repackage and replace the release bundle:
+## Debugging & logs
+- Docker Compose logs: docker compose -f docker-compose.prod.yml logs -f
+- To debug failing /api/predict calls:
+  1) Check the Next.js server log for the route invocation.
+  2) Check the inference service logs (uvicorn) for errors.
+  3) If you see ECONNREFUSED 127.0.0.1:8000 in a hosted environment (Vercel), remember that the FastAPI service is not running on Vercel. Deploy inference separately or remove the proxy.
+- Steps to reproduce common issues:
+  - Port conflicts: EADDRINUSE — use lsof -i :3050 or npx kill-port 3050
+  - Missing models: check ml/models/ and the .cropintel-fetch-ok marker.
 
-```bash
-python3 -m ml.scripts.package_models --tflite-only -o cropintel-models-mobile.zip
-gh release upload v1 cropintel-models-mobile.zip -R rakshithj09/CropIntel --clobber
-# on a running server: rm ml/models/.cropintel-fetch-ok && docker compose -f docker-compose.prod.yml restart
-```
+## Environment variables
+- NEXT_PUBLIC_GOOGLE_MAPS_API_KEY — optional, used by outbreak map (client-side).
+- CROPINTEL_MODELS_URL — override default model bundle URL.
+- CROPINTEL_ADMIN_TOKEN — admin token to guard /admin/reload (if enabled).
+- NEXT_DEV_ALLOWED_ORIGINS — helper for phone-on-same-wifi dev UX.
+- PORT / NEXT_PUBLIC_* — standard Next.js env variables.
 
-## Project layout
+## Deployment options
+- Single-host: docker compose (docker-compose.prod.yml) runs both web + inference in one container.
+- Cloud:
+  - Deploy inference to a service (Cloud Run, Railway, Render, Fly) and point Next.js API proxy to that public URL.
+  - Host Next.js on Vercel, Netlify, or Cloud Run. If hosted separately, update API proxy configuration to the deployed inference URL.
+  - When deploying on GCP you may optionally enable: Maps JavaScript API (for outbreak map), Cloud Run, Cloud Storage for models, Secret Manager for tokens.
 
-- `app/` — Next.js UI + `/api/predict` (forwards to the inference service) + `/api/health`
-- `ml/serve/inference_app.py` — FastAPI inference service (loads every crop model once)
-- `ml/` — training (`training/`), predictors (`inference/`), config, scripts
-- `docker-compose.prod.yml`, `docker/`, `docs/DEPLOYMENT.md` — production deploy
-- `tests/` — pytest suite (`.github/workflows/ci.yml` runs web + Python checks)
+## CI/CD recommendations
+- Publish models via GitHub Releases and use ml/scripts/fetch_models in deployments to fetch the current model bundle at startup.
+- Add a Canary env that points to a "canary" model bundle for testing new models before promoting to v1.
 
-## Troubleshooting: port 3050 already in use
+## Contributing & workflow
+- Feature branching with descriptive names: feat/<feature>, fix/<bug>
+- Run local linters and tests before pushing.
+- Update ml/scripts/package_models and ml/scripts/fetch_models as necessary if model format changes.
+- When adding or changing labels/disease names, update:
+  - ml/inference label maps
+  - app/lib/crops.ts and app/lib/stateDiseaseMap.ts (regional priors / whitelists)
+  - tests to reflect label changes
 
-If you see "Error: listen EADDRINUSE: address already in use 0.0.0.0:3050" when running npm run dev, either stop the process using port 3050 or start the dev server on another port.
+## Security notes
+- Keep private API tokens out of the repo. Use environment variables or a secrets manager for production.
+- Restrict Google Maps API key by HTTP referrer when using it in the browser.
+- The repository includes a simple admin token mechanism; rotate CROPINTEL_ADMIN_TOKEN if used.
 
-Options:
+## Troubleshooting (quick)
+- Docker: if `docker` CLI missing install Docker Desktop (macOS/Windows) or Docker Engine (Linux). On macOS if brew fails with "No developer tools installed" run:
+  ```bash
+  xcode-select --install
+  ```
+- Port already in use:
+  ```bash
+  lsof -nP -iTCP:3050 -sTCP:LISTEN
+  kill -9 <PID>
+  ```
+  or npx kill-port 3050
+- ECONNREFUSED 127.0.0.1:8000 on hosted platforms: the frontend is trying to proxy a local inference service. Deploy inference publicly or run it where your front-end can reach it.
 
-1) Find and kill the process (macOS / Linux)
-```bash
-# show process listening on port 3050
-lsof -nP -iTCP:3050 -sTCP:LISTEN
+## Useful commands summary
+- Build & run (prod):
+  ```bash
+  docker compose -f docker-compose.prod.yml up -d --build
+  ```
+- Dev (inference + web):
+  ```bash
+  python3 -m uvicorn ml.serve.inference_app:app --host 127.0.0.1 --port 8000
+  npm run dev
+  ```
+- Fetch models:
+  ```bash
+  python3 -m ml.scripts.fetch_models
+  ```
+- Kill port (quick):
+  ```bash
+  npx kill-port 3050
+  ```
 
-# kill by PID (replace <PID> with the number from the previous command)
-kill -9 <PID>
-```
+## Where to look in the code for common changes
+- Add/adjust labels or crops: /app/lib/crops.ts and /app/lib/stateDiseaseMap.ts
+- Change inference behavior: /ml/inference or /ml/serve/inference_app.py
+- API route proxy behavior: app/api/predict/route.ts (or pages/api/predict.js)
+- Map UI: app/components/USOutbreakMap.tsx
+- Styles & layout: app/globals.css and app/page.tsx
 
-2) One‑liner to kill the port (cross‑platform via npx)
-```bash
-npx kill-port 3050
-```
+## License
+- MIT (see repository root LICENSE)
 
-3) Start the dev server on a different port
-```bash
-# pass a different port to next
-npm run dev -- -p 3051
+## Contacts
+- Repo: https://github.com/rakshithj09/CropIntel
+- If you add new maintainers, update this README and the repo settings.
 
-# or set PORT env then run
-PORT=3051 npm run dev
-```
+## Acknowledgements
+- Model & UI inspiration and open source tooling used: TensorFlow Lite, EfficientNet, Next.js, FastAPI, Leaflet/Google Maps.
 
-After freeing the port or choosing another port, re-run:
-```bash
-npm run dev
-```
-
-## Usage
-
-This project is proprietary and maintained privately. All rights reserved.
+...end of developer README...
