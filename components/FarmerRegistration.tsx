@@ -124,7 +124,6 @@ export default function FarmerRegistration({ onRegister, crops }: FarmerRegistra
         onClick={() => setIsOpen(true)}
         className="btn-primary min-h-[42px] px-4 py-2"
       >
-        <MapPin className="w-4 h-4" />
         Watch My Farm
       </button>
 
