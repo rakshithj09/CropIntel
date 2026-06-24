@@ -16,7 +16,7 @@ const spaceGrotesk = Space_Grotesk({
 })
 
 export const metadata: Metadata = {
-  title: 'Crop Intel - Disease Detection and Farm Management',
+  title: 'CropIntel - Disease Detection',
   description: 'Check crop leaf photos, save farm areas, and watch nearby crop issue reports.',
 }
 
