@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Bell, X, AlertTriangle, MapPin, Check } from 'lucide-react'
+import { Bell, X, AlertTriangle, MapPin, Check, Clock } from 'lucide-react'
 import {
   findAffectedFarmers,
   generateNotificationMessage,
@@ -17,6 +17,34 @@ interface NotificationSystemProps {
 }
 
 const SEVERITY_SORT = { high: 0, medium: 1, low: 2 } as const
+const NOTIFICATION_TIME_FORMAT: Intl.DateTimeFormatOptions = {
+  month: 'numeric',
+  day: 'numeric',
+  year: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+}
+
+const SEVERITY_META = {
+  high: {
+    label: 'High',
+    badge: 'border-red-200 bg-red-50 text-red-700',
+    icon: 'text-red-600',
+    unread: 'border-red-200 bg-red-50/60',
+  },
+  medium: {
+    label: 'Medium',
+    badge: 'border-orange-200 bg-orange-50 text-orange-700',
+    icon: 'text-orange-600',
+    unread: 'border-orange-200 bg-orange-50/60',
+  },
+  low: {
+    label: 'Low',
+    badge: 'border-yellow-200 bg-yellow-50 text-yellow-700',
+    icon: 'text-yellow-600',
+    unread: 'border-yellow-200 bg-yellow-50/60',
+  },
+} as const
 
 export default function NotificationSystem({
   outbreaks,
@@ -267,7 +295,7 @@ export default function NotificationSystem({
           farmerId: targetFarmerId,
           outbreakId: report.id,
           distance: match.distance,
-          message: `${generateNotificationMessage(outbreakLocation, match.distance)}${verifiedTail}`,
+          message: `${generateNotificationMessage(outbreakLocation)}${verifiedTail}`,
           severity: outbreakLocation.severity,
           read: readByOutbreak.get(report.id) ?? false,
           createdAt: createdByOutbreak.get(report.id) ?? new Date().toISOString(),
@@ -333,33 +361,27 @@ export default function NotificationSystem({
           role="dialog"
           aria-modal="true"
           aria-labelledby="disease-alerts-title"
-          className="absolute right-0 top-[calc(100%+10px)] flex max-h-[min(420px,70dvh)] w-[min(22rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-xl ring-1 ring-slate-900/10"
+          className="absolute right-0 top-[calc(100%+10px)] flex max-h-[min(460px,72dvh)] w-[min(24rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl ring-1 ring-slate-900/5"
         >
-              <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-200 bg-white p-4">
-                <div className="min-w-0 flex-1">
-                  <h3
-                    id="disease-alerts-title"
-                    className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-lg font-bold leading-tight text-slate-900 sm:text-xl"
-                  >
-                    <span className="inline-flex shrink-0 items-center gap-2">
-                      <Bell className="h-5 w-5 shrink-0 text-primary-700" />
-                      <span>Crop alerts</span>
-                    </span>
-                    {unreadCount > 0 && (
-                      <span className="inline-flex shrink-0 items-center rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white shadow-sm">
-                        {unreadCount} new
-                      </span>
-                    )}
+              <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/80 px-4 py-3.5">
+                <div className="min-w-0">
+                  <h3 id="disease-alerts-title" className="text-base font-bold leading-tight text-slate-950">
+                    Crop alerts
                   </h3>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {unreadCount > 0
+                      ? `${unreadCount} unread ${unreadCount === 1 ? 'alert' : 'alerts'}`
+                      : 'All caught up'}
+                  </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
                   {unreadCount > 0 && (
                     <button
                       type="button"
                       onClick={markAllAsRead}
-                      className="whitespace-nowrap rounded-lg px-2 py-1.5 text-xs font-semibold text-primary-700 transition-colors hover:bg-primary-50"
+                      className="whitespace-nowrap rounded-full border border-primary-100 bg-white px-3 py-1.5 text-xs font-semibold text-primary-700 shadow-sm transition-colors hover:bg-primary-50"
                     >
-                      Mark all read
+                      Mark read
                     </button>
                   )}
                   <button
@@ -373,77 +395,80 @@ export default function NotificationSystem({
                 </div>
               </div>
 
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-white p-2">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-white p-3">
                 {notifications.length === 0 ? (
-                  <div className="py-10 text-center text-slate-600">
-                    <Bell className="mx-auto mb-3 h-12 w-12 text-slate-400" />
+                  <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center text-slate-600">
+                    <Bell className="mx-auto mb-3 h-10 w-10 text-slate-400" />
                     <p className="font-semibold text-slate-800">No alerts yet</p>
-                    <p className="mt-1 text-sm text-slate-500">
-                      You&apos;ll be notified when reported crop trouble is within 250 miles
+                    <p className="mx-auto mt-1 max-w-56 text-sm text-slate-500">
+                      New nearby crop reports will show up here.
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-2.5">
                     {notifications.map((notification) => {
                       const outbreak = outbreaks.find((o) => o.id === notification.outbreakId) as
                         | OutbreakReport
                         | undefined
+                      const severity = SEVERITY_META[notification.severity]
                       return (
                         <div
                           key={notification.id}
-                          className={`rounded-xl border p-4 transition-all ${
+                          className={`rounded-xl border p-3.5 transition-all ${
                             notification.read
-                              ? 'border-slate-200 bg-slate-50'
-                              : 'border-red-200 bg-red-50/95 shadow-sm'
+                              ? 'border-slate-200 bg-white'
+                              : `${severity.unread} shadow-sm`
                           }`}
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0 flex-1">
-                              <div className="mb-2 flex gap-2">
-                                <AlertTriangle
-                                  className={`mt-0.5 h-5 w-5 shrink-0 ${
-                                    notification.severity === 'high'
-                                      ? 'text-red-600'
-                                      : notification.severity === 'medium'
-                                        ? 'text-orange-600'
-                                        : 'text-yellow-600'
-                                  }`}
-                                />
-                                <p className="text-sm font-bold leading-snug text-slate-900">
-                                  {notification.message}
-                                </p>
+                              <div className="mb-2 flex flex-wrap items-center gap-2">
+                                <span
+                                  className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ${severity.badge}`}
+                                >
+                                  <AlertTriangle className={`h-3 w-3 ${severity.icon}`} />
+                                  {severity.label}
+                                </span>
+                                {!notification.read && (
+                                  <span className="h-2 w-2 rounded-full bg-primary-600" aria-label="Unread alert" />
+                                )}
                               </div>
+                              <p className="text-sm font-semibold leading-snug text-slate-950">
+                                {notification.message}
+                              </p>
                               {outbreak && (
-                                <div className="mt-2 space-y-1 pl-0 sm:pl-7">
+                                <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                                  <span className="inline-flex items-center gap-1">
+                                    <MapPin className="h-3.5 w-3.5 shrink-0" />
+                                    {notification.distance.toFixed(1)} mi away
+                                  </span>
+                                  <span className="inline-flex items-center gap-1">
+                                    <Clock className="h-3.5 w-3.5 shrink-0" />
+                                    {new Date(notification.createdAt).toLocaleString(
+                                      undefined,
+                                      NOTIFICATION_TIME_FORMAT
+                                    )}
+                                  </span>
                                   {outbreak.reporterVerified !== undefined && (
-                                    <p className="text-xs">
-                                      <span
-                                        className={`inline-block rounded-md border px-2 py-0.5 font-bold ${
-                                          outbreak.reporterVerified
-                                            ? 'border-emerald-200 bg-emerald-100 text-emerald-900'
-                                            : 'border-slate-200 bg-slate-100 text-slate-700'
-                                        }`}
-                                      >
-                                        {outbreak.reporterVerified ? 'Verified farmer' : 'Unverified farmer'}
-                                      </span>
-                                    </p>
+                                    <span
+                                      className={`inline-flex rounded-full border px-2 py-0.5 font-semibold ${
+                                        outbreak.reporterVerified
+                                          ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                          : 'border-slate-200 bg-slate-50 text-slate-600'
+                                      }`}
+                                    >
+                                      {outbreak.reporterVerified ? 'Verified' : 'Unverified'}
+                                    </span>
                                   )}
-                                  <p className="flex items-center gap-1 text-xs text-slate-600">
-                                    <MapPin className="h-3 w-3 shrink-0" />
-                                    {notification.distance.toFixed(1)} miles away
-                                  </p>
-                                  <p className="text-xs text-slate-500">
-                                    {new Date(notification.createdAt).toLocaleString()}
-                                  </p>
                                 </div>
                               )}
                             </div>
-                            <div className="flex shrink-0 items-start gap-1">
+                            <div className="flex shrink-0 items-start gap-0.5">
                               {!notification.read && (
                                 <button
                                   type="button"
                                   onClick={() => markAsRead(notification.id)}
-                                  className="rounded-lg p-1.5 text-green-700 transition-colors hover:bg-white"
+                                  className="rounded-lg p-1.5 text-emerald-700 transition-colors hover:bg-white/80"
                                   title="Mark as read"
                                 >
                                   <Check className="h-4 w-4" />
@@ -452,7 +477,7 @@ export default function NotificationSystem({
                               <button
                                 type="button"
                                 onClick={() => deleteNotification(notification.id)}
-                                className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-white hover:text-slate-800"
+                                className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-white/80 hover:text-slate-800"
                                 title="Delete"
                               >
                                 <X className="h-4 w-4" />
@@ -467,9 +492,9 @@ export default function NotificationSystem({
               </div>
 
               {notifications.length > 0 && (
-                <div className="shrink-0 border-t border-slate-200 bg-slate-100/90 p-3">
-                  <p className="text-center text-xs text-slate-600">
-                    Alerts within 250 miles of your farm (or demo location). Dismissed alerts stay hidden until refresh.
+                <div className="shrink-0 border-t border-slate-100 bg-slate-50 px-4 py-3">
+                  <p className="text-xs leading-relaxed text-slate-500">
+                    Showing alerts within 250 miles. Dismissed alerts stay hidden until refresh.
                   </p>
                 </div>
               )}
