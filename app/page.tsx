@@ -324,7 +324,7 @@ export default function Home() {
   }
 
   return (
-    <main className="relative min-h-screen min-h-[100dvh] overflow-hidden px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-24 sm:pt-28">
+    <main className="cropintel-shell relative min-h-screen min-h-[100dvh] overflow-hidden px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-24 sm:pt-28">
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="blob bg-grad-1" style={{ width: 560, height: 560, top: -140, left: -100 }} />
         <div className="blob bg-grad-2" style={{ width: 480, height: 480, top: 40, right: -120, opacity: 0.5 }} />
@@ -333,14 +333,14 @@ export default function Home() {
 
       <header className="fixed inset-x-0 top-0 z-50 px-4 py-3">
         <nav
-          className={`mx-auto flex max-w-6xl items-center justify-between gap-3 rounded-full px-4 py-3 transition-all duration-300 sm:px-5 ${
+          className={`mx-auto flex max-w-6xl items-center justify-between gap-3 rounded-full px-5 py-3 transition-all duration-300 ${
             scrolled ? 'glass' : 'border border-transparent'
           }`}
         >
             <button
               type="button"
               onClick={() => setActiveView('diagnose')}
-              className="flex min-w-0 items-center gap-2 text-left"
+              className="cropintel-brand flex min-w-0 items-center gap-2 text-left"
             >
               <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-leaf">
                 <Image
@@ -367,7 +367,7 @@ export default function Home() {
                   key={id}
                   type="button"
                   onClick={() => setActiveView(id)}
-                  className={`text-sm font-medium transition-colors ${
+                  className={`cropintel-menu-link text-sm font-medium transition-colors ${
                     activeView === id ? 'text-ink' : 'text-ink-soft hover:text-ink'
                   }`}
                 >
@@ -551,7 +551,10 @@ export default function Home() {
         )}
 
         <footer className="mt-10 mb-6 border-t border-field-soil/10 pt-5 text-center text-field-soil">
-          <p className="text-xs">Models: EfficientNet / TensorFlow Lite</p>
+          <p className="cropintel-footer-pill mb-5 inline-flex items-center gap-2 rounded-full border border-ink/10 bg-surface/60 px-3 py-1 font-mono text-xs uppercase tracking-widest text-ink-soft">
+            <span className="h-1.5 w-1.5 rounded-full bg-leaf" />
+            Models: EfficientNet / TensorFlow Lite
+          </p>
         </footer>
       </div>
     </main>
