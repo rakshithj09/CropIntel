@@ -11,7 +11,7 @@ export default function FarmerVerificationBadge({ verified, compact }: Props) {
   if (verified) {
     return (
       <span
-        className={`inline-flex items-center gap-1.5 rounded-full border font-semibold bg-emerald-50 text-emerald-900 border-emerald-200 ${
+        className={`inline-flex items-center gap-1.5 rounded-full border font-semibold bg-primary-50 text-primary-900 border-primary-200 ${
           compact ? 'px-2 py-0.5 text-xs' : 'px-3 py-1 text-sm'
         }`}
       >

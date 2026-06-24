@@ -23,22 +23,29 @@ interface PredictionResultsProps {
   regionNote?: string
 }
 
-/** Model may send 0–1 or 0–100; UI always shows percent to one decimal. */
-function toConfidencePercent(value: number): number {
-  if (value > 0 && value <= 1) return value * 100
-  return value
-}
-
 export default function PredictionResults({
   prediction,
   regionNote,
 }: PredictionResultsProps) {
+  // Decide the scale ONCE for the whole set. The model may send 0–1 (fractions)
+  // or 0–100 (percentages). Scaling per-value is wrong: a genuine sub-1%
+  // probability (e.g. 0.94 = 0.94%) would be mistaken for a fraction and
+  // blown up to 94%. So: if the largest value is ≤ 1 the data is fractions
+  // (×100); otherwise it's already percentages (×1).
+  const allConfidences = [
+    prediction.confidence,
+    ...prediction.all_predictions.map((p) => p.confidence),
+  ].filter((n) => typeof n === 'number' && !Number.isNaN(n))
+  const maxConfidence = allConfidences.length ? Math.max(...allConfidences) : 0
+  const confidenceScale = maxConfidence <= 1 ? 100 : 1
+  const toPct = (value: number) =>
+    Math.min(100, Math.max(0, value * confidenceScale))
   const getStatusColor = () => {
     if (prediction.not_in_catalog) {
       return 'bg-amber-50 text-amber-900 border-amber-200'
     }
     if (prediction.is_healthy) {
-      return 'bg-emerald-50 text-emerald-900 border-emerald-200'
+      return 'bg-primary-50 text-primary-900 border-primary-200'
     }
     if (prediction.meets_threshold) {
       return 'bg-rose-50 text-rose-900 border-rose-200'
@@ -102,7 +109,7 @@ export default function PredictionResults({
               Match strength
             </h3>
             <p className="mt-1 text-2xl font-bold tabular-nums text-primary-800">
-              {Math.min(100, Math.max(0, toConfidencePercent(prediction.confidence))).toFixed(1)}%
+              {toPct(prediction.confidence).toFixed(1)}%
             </p>
           </div>
         </div>
@@ -151,8 +158,7 @@ export default function PredictionResults({
         </h3>
         <div className="space-y-3">
           {prediction.all_predictions.map((pred, index) => {
-            const pctRaw = toConfidencePercent(pred.confidence)
-            const pctClamped = Math.min(100, Math.max(0, pctRaw))
+            const pctClamped = toPct(pred.confidence)
             const pctOneDecimal = pctClamped.toFixed(1)
             return (
               <div

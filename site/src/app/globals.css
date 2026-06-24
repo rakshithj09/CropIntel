@@ -1,0 +1,277 @@
+@import "tailwindcss";
+
+/* ============================================================================
+   CropIntel design tokens — cluely's cool, glassy, gradient feel, our product.
+   Dominant base: soft cool grey-blue. Green is a RESTRAINED botanical accent.
+   Amber is reserved for "disease detected" / confidence moments only.
+   ========================================================================== */
+@theme {
+  /* "Greenhouse Stone" — my own palette (not the guide's grey-blue): warm stone
+     base, evergreen ink, emerald primary, honey "detected" accent. */
+  --color-bg: #eceee7; /* warm light stone */
+  --color-surface: #fbfcf8;
+  --color-ink: #16231c; /* deep evergreen-ink */
+  --color-ink-soft: #515a52; /* warm grey-green secondary text (AA ~6:1 on bg) */
+  --color-leaf: #1fa866; /* emerald accent — dots / icons */
+  --color-leaf-deep: #0e7a47; /* button bg: white text passes AA (~5.5:1) */
+  --color-leaf-deeper: #0a5a35; /* button hover */
+  --color-amber: #e0913c; /* honey "detected" — fills / severity */
+  --color-amber-deep: #8c4e10; /* honey text on light surfaces (AA) */
+  --color-grad-1: #d6e7ce; /* sage wash */
+  --color-grad-2: #cce2dd; /* soft mist wash */
+  --color-grad-3: #ecdcc2; /* warm sand wash */
+
+  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Satoshi", var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-space), ui-monospace, monospace;
+
+  --radius-card: 20px;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-bg);
+  /* cluely-style: the page itself is washed with soft tinted gradients, not a
+     flat fill — this is what stops it reading as a generic template. */
+  background-image:
+    radial-gradient(55rem 40rem at 12% -8%, rgba(214, 231, 206, 0.85), transparent 60%),
+    radial-gradient(48rem 38rem at 92% 4%, rgba(204, 226, 221, 0.7), transparent 58%),
+    radial-gradient(52rem 42rem at 50% 108%, rgba(236, 220, 194, 0.62), transparent 60%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ---- Frosted glass: Apple-grade depth — a faint top-to-bottom sheen, a
+   crisp 1px rim, an inner top highlight, and a soft layered drop shadow with a
+   tight contact shadow. ---- */
+.glass {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.8) 0%,
+    rgba(247, 249, 243, 0.62) 100%
+  );
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.65),
+    0 28px 60px -28px rgba(18, 38, 28, 0.28),
+    0 8px 18px -12px rgba(18, 38, 28, 0.14);
+}
+
+/* ---- Hover lift: for cards that respond to intent (not ambient motion). ---- */
+.lift {
+  transition:
+    transform 0.4s cubic-bezier(0.2, 0.7, 0.2, 1),
+    box-shadow 0.4s cubic-bezier(0.2, 0.7, 0.2, 1);
+  will-change: transform;
+}
+.lift:hover {
+  transform: translateY(-6px);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.7),
+    0 44px 80px -28px rgba(18, 38, 28, 0.34),
+    0 14px 28px -14px rgba(18, 38, 28, 0.2);
+}
+
+/* ---- Section eyebrow — the small mono pill that labels each section. ---- */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(22, 35, 28, 0.1);
+  background: rgba(251, 252, 248, 0.6);
+  padding: 0.3rem 0.8rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--color-ink-soft);
+}
+.eyebrow::before {
+  content: "";
+  height: 0.375rem;
+  width: 0.375rem;
+  border-radius: 9999px;
+  background: var(--color-leaf);
+}
+
+/* ---- Gentle float for the hero showpiece — slow, calm, premium. ---- */
+@keyframes floaty {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+.floaty {
+  animation: floaty 7s ease-in-out infinite;
+}
+
+/* ---- Primary CTA: solid dark pill that pops against the warm page. A subtle
+   vertical gradient + inner highlight + soft shadow give it Apple-button depth.
+   Literal colors so it never depends on which Tailwind utilities got generated. ---- */
+.btn-primary {
+  background-image: linear-gradient(180deg, #1f3328 0%, #16231c 100%);
+  color: #ffffff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 12px 26px -12px rgba(22, 35, 28, 0.55);
+  transition:
+    background-image 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.btn-primary:hover {
+  background-image: linear-gradient(180deg, #15915a 0%, #0e7a47 100%);
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 16px 30px -12px rgba(14, 122, 71, 0.5);
+}
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+/* ---- Large blurred gradient blobs sitting BEHIND glass ---- */
+.blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(80px);
+  opacity: 0.55;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ---- Shimmer sweep across glass while "Analyzing…" (echoes cluely) ---- */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+.shimmer {
+  background: linear-gradient(
+    110deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.7) 50%,
+    transparent 70%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.3s ease-in-out infinite;
+}
+
+/* ---- Single scan-line pass on hover of the scan card ---- */
+@keyframes scanline {
+  0% {
+    transform: translateY(-120%);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(320%);
+    opacity: 0;
+  }
+}
+.scanline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 38%;
+  background: linear-gradient(
+    to bottom,
+    rgba(47, 174, 102, 0) 0%,
+    rgba(47, 174, 102, 0.18) 50%,
+    rgba(47, 174, 102, 0) 100%
+  );
+  opacity: 0;
+  pointer-events: none;
+}
+.scan-card:hover .scanline {
+  animation: scanline 1.2s ease-out;
+}
+
+/* ---- Custom cursor (taskflows-style dot + trailing ring) ---- */
+/* Native cursor hidden only while the field is mounted on a fine pointer. */
+body.cursor-field-active,
+body.cursor-field-active a,
+body.cursor-field-active button,
+body.cursor-field-active [role="button"] {
+  cursor: none;
+}
+
+.cursor-dot {
+  background: var(--color-leaf-deep);
+  box-shadow: 0 0 10px rgba(31, 168, 102, 0.6);
+  transition: opacity 0.25s ease;
+  will-change: transform;
+}
+
+.cursor-ring {
+  border-color: rgba(31, 168, 102, 0.55);
+  transition:
+    opacity 0.25s ease,
+    border-color 0.2s ease;
+  will-change: transform;
+}
+
+/* ---- Auto scan sweep over the live photo while "Analyzing…" ---- */
+@keyframes scan-sweep {
+  0% {
+    top: 4%;
+  }
+  100% {
+    top: 96%;
+  }
+}
+.scan-sweep-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(31, 168, 102, 0.95),
+    transparent
+  );
+  box-shadow: 0 0 14px 3px rgba(31, 168, 102, 0.45);
+  animation: scan-sweep 1.15s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .shimmer,
+  .scan-sweep-line,
+  .floaty,
+  .scan-card:hover .scanline {
+    animation: none;
+  }
+  .lift:hover {
+    transform: none;
+  }
+}

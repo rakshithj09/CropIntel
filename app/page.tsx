@@ -47,6 +47,8 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null)
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [activeView, setActiveView] = useState<'diagnose' | 'history' | 'outbreaks'>('diagnose')
+  // Nav is transparent at the top, frosts to glass on scroll — same as the marketing site.
+  const [scrolled, setScrolled] = useState(false)
   // Initialize with a sample outbreak in Russellville, Arkansas
   const [outbreakReports, setOutbreakReports] = useState<OutbreakReport[]>([
     {
@@ -192,6 +194,13 @@ export default function Home() {
     }
   }, [])
 
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
   const applyRegionalFilter = useCallback(
     (raw: PredictionPayload) => applyRegionalPrior(raw, selectedCrop, selectedState),
     [selectedCrop, selectedState]
@@ -318,45 +327,49 @@ export default function Home() {
   return (
     <main className="min-h-screen min-h-[100dvh] px-3 py-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-5 sm:py-5">
       <div className="mx-auto max-w-7xl">
-        {/* Top bar */}
-        <header className="glass sticky top-0 z-40 -mx-3 rounded-none border-x-0 border-t-0 px-3 pb-3 pt-[max(0.5rem,env(safe-area-inset-top))] sm:-mx-5 sm:rounded-b-2xl sm:border-x sm:px-5">
-          <div className="mx-auto max-w-7xl flex items-center justify-between gap-2 sm:gap-3">
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-primary-200 bg-primary-700 text-white shadow-sm">
+        {/* Top bar — floating frosted pill, identical to the marketing site nav:
+            transparent at the top, frosts to glass once scrolled. */}
+        <header className="sticky top-0 z-40 pt-[max(0.5rem,env(safe-area-inset-top))]">
+          <nav
+            className={`flex items-center justify-between gap-3 rounded-full px-5 py-3 transition-all duration-300 ${
+              scrolled ? 'glass' : 'border border-transparent'
+            }`}
+          >
+            <button
+              type="button"
+              onClick={() => setActiveView('diagnose')}
+              className="flex min-w-0 items-center gap-2"
+              aria-label="CropIntel home"
+            >
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary-500">
                 <Image
                   src="/brand/wheat-mark-transparent.png"
                   alt="CropIntel"
-                  width={22}
-                  height={44}
-                  className="opacity-95 object-contain drop-shadow-[0_1px_0_rgba(0,0,0,0.08)]"
+                  width={16}
+                  height={32}
+                  className="h-5 w-auto object-contain"
                   priority
                 />
-              </div>
-              <div className="leading-tight min-w-0">
-                <div className="truncate text-base font-bold text-primary-900">CropIntel</div>
-                <div className="text-[11px] leading-snug text-field-soil sm:text-xs">Crop checks and local alerts</div>
-              </div>
-            </div>
+              </span>
+              <span className="font-display text-lg font-extrabold tracking-tight text-field-bark">
+                CropIntel
+              </span>
+            </button>
 
-            <div className="flex items-center gap-1.5 sm:gap-2 flex-nowrap shrink-0 justify-end">
-              {farmerProfile && (
-                <FarmerVerificationBadge verified={farmerProfile.verifiedFarmer} compact />
-              )}
+            <div className="flex shrink-0 items-center gap-2">
               <button
                 type="button"
                 onClick={() => setActiveView('diagnose')}
-                className="btn-primary hidden min-h-[42px] px-4 py-2 sm:flex"
+                className="btn-primary hidden !min-h-0 rounded-full !px-4 !py-2 text-sm sm:inline-flex"
               >
                 Check crop
               </button>
               <div className="hidden sm:block">
                 <FarmerRegistration onRegister={handleFarmerRegister} crops={Object.keys(CROPS)} />
               </div>
-              <div className="relative z-50">
-                <NotificationSystem outbreaks={outbreakReports} currentFarmerLocation={farmerLocation || undefined} />
-              </div>
+              <NotificationSystem outbreaks={outbreakReports} currentFarmerLocation={farmerLocation || undefined} />
             </div>
-          </div>
+          </nav>
         </header>
 
         {/* Views */}
