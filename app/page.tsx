@@ -262,7 +262,7 @@ export default function Home() {
           typeof merged.confidence === 'number' && merged.confidence <= 1
             ? merged.confidence * 100
             : merged.confidence
-        savePredictionToHistory(selectedCrop, merged.disease, confidencePercent, imageUrl)
+        savePredictionToHistory(selectedCrop, merged.disease, confidencePercent, imageUrl, merged)
       }
     } catch (err: any) {
       setError(err.message || 'An error occurred')
