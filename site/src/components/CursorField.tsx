@@ -21,8 +21,12 @@ export default function CursorField() {
   const ringRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Bail on touch devices or reduced-motion preference.
-    const finePointer = window.matchMedia("(pointer: fine)").matches;
+    // Bail on touch devices or reduced-motion preference. Accept any-pointer
+    // too — some external-monitor / dock setups report the primary pointer as
+    // coarse even with a mouse, which would otherwise disable the cursor.
+    const finePointer =
+      window.matchMedia("(pointer: fine)").matches ||
+      window.matchMedia("(any-pointer: fine)").matches;
     const reduced = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;

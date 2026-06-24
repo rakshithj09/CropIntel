@@ -19,7 +19,11 @@ export default function CursorField() {
   const ringRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const finePointer = window.matchMedia('(pointer: fine)').matches
+    // Accept any-pointer too — some external-monitor / dock setups report the
+    // primary pointer as coarse even with a mouse, which would disable the cursor.
+    const finePointer =
+      window.matchMedia('(pointer: fine)').matches ||
+      window.matchMedia('(any-pointer: fine)').matches
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (!finePointer || reduced) return
 
