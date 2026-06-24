@@ -74,7 +74,7 @@ export default function ExportResults({ prediction, crop, imageUrl }: ExportResu
   }
 
   return (
-    <div className="mt-6 rounded-2xl border border-field-soil/10 bg-white p-4 shadow-sm sm:p-6">
+    <div className="mt-6 rounded-2xl border border-white/70 bg-white/75 p-4 shadow-[0_24px_60px_-36px_rgba(18,38,28,0.38)] ring-1 ring-ink/5 backdrop-blur sm:p-6">
       <h3 className="mb-5 flex items-center gap-3 text-lg font-bold text-primary-900">
         <Download className="h-5 w-5 text-primary-700" />
         Save this field check
@@ -83,7 +83,7 @@ export default function ExportResults({ prediction, crop, imageUrl }: ExportResu
         <button
           type="button"
           onClick={exportToJSON}
-          className="btn-secondary"
+          className="btn-secondary bg-white/70"
         >
           <FileJson className="h-4 w-4" />
           Save JSON
@@ -91,7 +91,7 @@ export default function ExportResults({ prediction, crop, imageUrl }: ExportResu
         <button
           type="button"
           onClick={exportToCSV}
-          className="btn-secondary"
+          className="btn-secondary bg-white/70"
         >
           <Table className="h-4 w-4" />
           Save CSV

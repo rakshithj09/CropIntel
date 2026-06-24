@@ -8,7 +8,6 @@ import ImageUpload from '@/components/ImageUpload'
 import CropSelector from '@/components/CropSelector'
 import StateSelector from '@/components/StateSelector'
 import PredictionResults from '@/components/PredictionResults'
-import DiseaseInfo from '@/components/DiseaseInfo'
 import PredictionHistory from '@/components/PredictionHistory'
 import ExportResults from '@/components/ExportResults'
 import TipsAndGuidelines from '@/components/TipsAndGuidelines'
@@ -507,14 +506,8 @@ export default function Home() {
                       <Diagnosis
                         disease={prediction.disease}
                         crop={selectedCrop}
-                        confidence={
-                          typeof prediction.confidence === 'number' && prediction.confidence <= 1
-                            ? prediction.confidence * 100
-                            : prediction.confidence
-                        }
                         isHealthy={prediction.is_healthy}
                       />
-                      <DiseaseInfo diseaseName={prediction.disease} crop={selectedCrop} />
                       <ExportResults prediction={prediction} crop={selectedCrop} imageUrl={imageUrl} />
                     </>
                   )}

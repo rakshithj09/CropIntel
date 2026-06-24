@@ -33,17 +33,21 @@ export default function PredictionResults({
   prediction,
   regionNote,
 }: PredictionResultsProps) {
+  const otherPredictions = prediction.all_predictions.filter(
+    (pred) => pred.disease.toLowerCase() !== prediction.disease.toLowerCase()
+  )
+
   const getStatusColor = () => {
     if (prediction.not_in_catalog) {
-      return 'bg-amber-50 text-amber-900 border-amber-200'
+      return 'bg-amber-50 text-amber-800 border-amber-200'
     }
     if (prediction.is_healthy) {
-      return 'bg-emerald-50 text-emerald-900 border-emerald-200'
+      return 'bg-emerald-50 text-emerald-800 border-emerald-200'
     }
     if (prediction.meets_threshold) {
-      return 'bg-rose-50 text-rose-900 border-rose-200'
+      return 'bg-rose-50 text-rose-800 border-rose-200'
     }
-    return 'bg-amber-50 text-amber-900 border-amber-200'
+    return 'bg-amber-50 text-amber-800 border-amber-200'
   }
 
   const getStatusText = () => {
@@ -73,21 +77,21 @@ export default function PredictionResults({
   }
 
   return (
-    <div className="mt-8 rounded-2xl border border-field-soil/10 bg-white p-4 shadow-sm sm:p-6">
-      <h2 className="mb-5 flex items-center gap-2 text-lg font-bold text-primary-900">
-        <svg className="h-7 w-7 text-primary-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className="mt-8 rounded-2xl border border-white/80 bg-white/85 p-4 shadow-[0_18px_52px_-34px_rgba(18,38,28,0.34)] ring-1 ring-ink/5 backdrop-blur sm:p-6">
+      <h2 className="mb-5 flex items-center gap-2.5 text-lg font-bold text-primary-900">
+        <svg className="h-6 w-6 text-primary-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         Field readout
       </h2>
       {regionNote && (
-        <p className="-mt-2 mb-4 rounded-lg border border-primary-100 bg-primary-50 px-3 py-2 text-xs leading-5 text-field-soil">
+        <p className="-mt-2 mb-4 rounded-xl border border-primary-100 bg-primary-50/70 px-3 py-2 text-xs leading-5 text-field-soil">
           {regionNote}
         </p>
       )}
 
       {/* Main Result */}
-      <div className="mb-6 rounded-xl border border-field-soil/10 bg-field-cream p-5">
+      <div className="mb-5 rounded-2xl border border-field-soil/10 bg-white/65 p-5">
         <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wide text-field-soil">
@@ -109,7 +113,7 @@ export default function PredictionResults({
 
         {/* Status Badge */}
         <div
-          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border font-semibold text-sm ${getStatusColor()}`}
+          className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold ${getStatusColor()}`}
         >
           {prediction.is_healthy ? (
             <CheckCircle2 className="w-4 h-4" />
@@ -120,14 +124,14 @@ export default function PredictionResults({
         </div>
       </div>
 
-      <div className="mb-6 rounded-xl border border-primary-100 bg-primary-50 p-4">
+      <div className="mb-5 rounded-2xl border border-field-soil/10 bg-field-cream/35 p-4">
         <p className="text-xs font-bold uppercase tracking-wide text-primary-800">What to do next</p>
         <p className="mt-1 text-sm leading-6 text-primary-950">{getFieldAction()}</p>
       </div>
 
       {/* Not-in-catalog notice: model couldn't confidently match any known disease */}
       {prediction.not_in_catalog && (
-        <div className="rounded-xl p-4 mb-6 border border-amber-200 bg-amber-50 text-amber-900">
+        <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-amber-900">
           <div className="flex items-start gap-2">
             <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
             <div>
@@ -141,46 +145,46 @@ export default function PredictionResults({
         </div>
       )}
 
-      {/* All Predictions */}
-      <div>
-        <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
-          <svg className="h-5 w-5 text-field-soil" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-          </svg>
-          Other possible matches
-        </h3>
-        <div className="space-y-3">
-          {prediction.all_predictions.map((pred, index) => {
-            const pctRaw = toConfidencePercent(pred.confidence)
-            const pctClamped = Math.min(100, Math.max(0, pctRaw))
-            const pctOneDecimal = pctClamped.toFixed(1)
-            return (
-              <div
-                key={index}
-                className="rounded-xl border border-field-soil/10 bg-white p-4 transition-all duration-200 hover:border-primary-300 hover:bg-primary-50/40"
-              >
-                {/* Stacked on phones; row layout from md up */}
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
-                  <p className="min-w-0 flex-1 text-left text-sm font-medium leading-snug text-slate-900 md:text-base">
-                    {pred.disease}
-                  </p>
-                  <div className="flex w-full min-w-0 items-center gap-3 md:max-w-md md:flex-[1_1_40%]">
-                    <div className="min-h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-200">
-                      <div
-                        className="h-2 max-w-full rounded-full bg-gradient-to-r from-primary-700 to-field-straw transition-all duration-500"
-                        style={{ width: `${pctClamped}%` }}
-                      />
+      {otherPredictions.length > 0 && (
+        <div>
+          <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900">
+            <svg className="h-5 w-5 text-field-soil" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            Other possible matches
+          </h3>
+          <div className="space-y-3">
+            {otherPredictions.map((pred, index) => {
+              const pctRaw = toConfidencePercent(pred.confidence)
+              const pctClamped = Math.min(100, Math.max(0, pctRaw))
+              const pctOneDecimal = pctClamped.toFixed(1)
+              return (
+                <div
+                  key={`${pred.disease}-${index}`}
+                  className="rounded-2xl border border-field-soil/10 bg-white/70 p-4 transition-all duration-200 hover:border-primary-200 hover:bg-white"
+                >
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
+                    <p className="min-w-0 flex-1 text-left text-sm font-medium leading-snug text-slate-900 md:text-base">
+                      {pred.disease}
+                    </p>
+                    <div className="flex w-full min-w-0 items-center gap-3 md:max-w-md md:flex-[1_1_40%]">
+                      <div className="min-h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-200/80">
+                        <div
+                          className="h-2 max-w-full rounded-full bg-gradient-to-r from-primary-700 to-leaf transition-all duration-500"
+                          style={{ width: `${pctClamped}%` }}
+                        />
+                      </div>
+                      <span className="min-w-[4.5rem] shrink-0 text-right text-sm font-semibold tabular-nums text-slate-700 md:text-base">
+                        {pctOneDecimal}%
+                      </span>
                     </div>
-                    <span className="min-w-[4.5rem] shrink-0 text-right text-sm font-semibold tabular-nums text-slate-700 md:text-base">
-                      {pctOneDecimal}%
-                    </span>
                   </div>
                 </div>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
