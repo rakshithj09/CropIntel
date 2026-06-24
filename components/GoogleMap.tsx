@@ -145,12 +145,12 @@ export default function GoogleMapComponent({
 
   if (!isLoaded) {
     return (
-      <div className="flex h-full min-h-[280px] w-full items-center justify-center rounded-xl border-2 border-primary-200 bg-primary-50 sm:min-h-[400px]">
+      <div className="flex h-full min-h-[280px] w-full items-center justify-center rounded-xl border-2 border-blue-200 bg-blue-50 sm:min-h-[400px]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-primary-600 font-semibold">Loading Google Maps...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-blue-600 font-semibold">Loading Google Maps...</p>
           {!apiKey && (
-            <p className="text-primary-500 text-xs mt-2">No API key configured</p>
+            <p className="text-blue-500 text-xs mt-2">No API key configured</p>
           )}
         </div>
       </div>
@@ -312,12 +312,12 @@ export default function GoogleMapComponent({
           >
             <div className="p-3 min-w-[min(18rem,calc(100vw-3rem))] max-w-[min(300px,calc(100vw-2rem))]">
               <div className="flex items-start justify-between mb-2">
-                <h3 className="font-bold text-lg text-slate-900">
+                <h3 className="font-bold text-lg text-gray-900">
                   {selectedReport.crop.charAt(0).toUpperCase() + selectedReport.crop.slice(1)} - {selectedReport.disease}
                 </h3>
                 <button
                   onClick={() => setSelectedReport(null)}
-                  className="text-slate-400 hover:text-slate-600 ml-2"
+                  className="text-gray-400 hover:text-gray-600 ml-2"
                   aria-label="Close"
                 >
                   ×
@@ -339,7 +339,7 @@ export default function GoogleMapComponent({
               </div>
               
               {selectedReport.description && (
-                <p className="text-sm text-slate-700 mb-3 leading-relaxed">
+                <p className="text-sm text-gray-700 mb-3 leading-relaxed">
                   {selectedReport.description}
                 </p>
               )}
@@ -349,7 +349,7 @@ export default function GoogleMapComponent({
                   <span
                     className={`inline-block text-xs font-bold px-2.5 py-1 rounded-full border ${
                       selectedReport.reporterVerified
-                        ? 'bg-primary-100 text-primary-900 border-primary-300'
+                        ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
                         : 'bg-slate-100 text-slate-700 border-slate-300'
                     }`}
                   >
@@ -358,11 +358,11 @@ export default function GoogleMapComponent({
                 </div>
               )}
 
-              <div className="border-t border-slate-200 pt-2 mt-2">
-                <p className="text-xs text-slate-500">
+              <div className="border-t border-gray-200 pt-2 mt-2">
+                <p className="text-xs text-gray-500">
                   <span className="font-semibold">Location:</span> {selectedReport.lat.toFixed(4)}, {selectedReport.lng.toFixed(4)}
                 </p>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-gray-500 mt-1">
                   <span className="font-semibold">Reported:</span> {new Date(selectedReport.date).toLocaleString()}
                 </p>
               </div>
@@ -373,7 +373,7 @@ export default function GoogleMapComponent({
 
       {/* Click instruction overlay */}
       {showMapClickHint && (
-        <div className="absolute bottom-3 left-3 right-3 sm:left-6 sm:right-auto sm:bottom-6 bg-gradient-to-r from-primary-600 to-primary-700 text-white px-3 py-2.5 sm:px-5 sm:py-3 rounded-lg shadow-xl z-10 border border-primary-800 pointer-events-none">
+        <div className="absolute bottom-3 left-3 right-3 sm:left-6 sm:right-auto sm:bottom-6 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-3 py-2.5 sm:px-5 sm:py-3 rounded-lg shadow-xl z-10 border border-blue-800 pointer-events-none">
           <p className="text-xs sm:text-sm font-semibold flex items-center gap-2">
             <MapPin className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
             Tap or click the map to report an outbreak

@@ -94,7 +94,10 @@ export function generateNotificationMessage(
   outbreak: OutbreakLocation,
   distance: number
 ): string {
-  return `${outbreak.severity.toUpperCase()} ALERT: ${outbreak.disease} detected in ${outbreak.crop} ${distance.toFixed(1)} miles away`
+  const severityEmoji =
+    outbreak.severity === 'high' ? '🔴' : outbreak.severity === 'medium' ? '🟠' : '🟡'
+  
+  return `${severityEmoji} ${outbreak.severity.toUpperCase()} ALERT: ${outbreak.disease} detected in ${outbreak.crop} ${distance.toFixed(1)} miles away`
 }
 
 /**

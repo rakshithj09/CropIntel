@@ -36,9 +36,9 @@ function trendStyles(t: HealthTrend) {
   switch (t) {
     case 'improving':
       return {
-        border: 'border-primary-300',
-        bg: 'bg-primary-50',
-        text: 'text-primary-900',
+        border: 'border-emerald-300',
+        bg: 'bg-emerald-50',
+        text: 'text-emerald-900',
         Icon: TrendingUp,
       }
     case 'worsening':

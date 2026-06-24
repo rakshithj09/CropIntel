@@ -122,7 +122,7 @@ export default function FarmerRegistration({ onRegister, crops }: FarmerRegistra
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="btn-primary !min-h-0 rounded-full !px-4 !py-2 text-sm"
+        className="btn-primary min-h-[42px] px-4 py-2"
       >
         Watch My Farm
       </button>
