@@ -1,30 +1,37 @@
 'use client'
 
-import Link from 'next/link'
 import Image from 'next/image'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { Loader2, Plus } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
+import FarmSetupForm from '@/components/FarmSetupForm'
 import { signOutUser, subscribeToAuth } from '@/src/lib/auth'
-import { getUserFarms } from '@/src/lib/farms'
-import type { Farm } from '@/src/lib/types'
+import type { User } from 'firebase/auth'
 
-export default function FarmsPage() {
+export default function NewFarmPage() {
   const router = useRouter()
-  const [farms, setFarms] = useState<Farm[]>([])
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [scrolled, setScrolled] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    return subscribeToAuth(async (user) => {
-      if (!user) {
-        router.replace('/login')
-        return
-      }
+    return subscribeToAuth(
+      (currentUser) => {
+        if (!currentUser) {
+          router.replace('/login')
+          return
+        }
 
-      setFarms(await getUserFarms(user.uid))
-      setLoading(false)
-    })
+        setUser(currentUser)
+        setLoading(false)
+      },
+      (err) => {
+        setError(err.message)
+        setLoading(false)
+      }
+    )
   }, [router])
 
   useEffect(() => {
@@ -116,60 +123,19 @@ export default function FarmsPage() {
         ))}
       </div>
 
-      <div className="mx-auto max-w-5xl">
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-extrabold text-primary-900">Your farms</h1>
+      <div className="mx-auto max-w-4xl">
+        <section className="surface rounded-2xl p-5 sm:p-8">
+          <div className="mb-6">
+            <p className="eyebrow">Farm management</p>
+            <h1 className="mt-4 text-3xl font-extrabold text-primary-900 sm:text-4xl">Add a farm</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-field-soil">
+              Create another farm for your operation or join a farm that already exists.
+            </p>
           </div>
-          <div className="flex gap-2">
-            <Link href="/farms/new" className="btn-primary">
-              <Plus className="h-4 w-4" />
-              Add farm
-            </Link>
-          </div>
-        </div>
 
-        {farms.length === 0 ? (
-          <section className="surface rounded-2xl p-6 text-center">
-            <p className="text-sm text-field-soil">No farms are connected to this account yet.</p>
-            <Link href="/farms/new" className="btn-primary mt-5">
-              Create or join a farm
-            </Link>
-          </section>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2">
-            {farms.map((farm) => (
-              <article key={farm.id} className="surface rounded-2xl p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h2 className="text-xl font-extrabold text-primary-900">{farm.name}</h2>
-                    <p className="mt-1 text-sm text-field-soil">{farm.address}</p>
-                  </div>
-                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-bold uppercase text-slate-600">
-                    {farm.verificationStatus}
-                  </span>
-                </div>
-                <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-                  <div className="rounded-xl bg-white/70 p-3">
-                    <p className="text-xs font-bold uppercase tracking-wide text-field-soil">Join code</p>
-                    <p className="mt-1 font-mono text-lg font-bold tracking-[0.2em] text-primary-900">{farm.joinCode}</p>
-                  </div>
-                  <div className="rounded-xl bg-white/70 p-3">
-                    <p className="text-xs font-bold uppercase tracking-wide text-field-soil">State</p>
-                    <p className="mt-1 font-bold text-primary-900">{farm.stateCode}</p>
-                  </div>
-                </div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {farm.crops.map((crop) => (
-                    <span key={crop} className="rounded-full bg-field-cream px-3 py-1 text-sm font-semibold capitalize text-field-soil">
-                      {crop}
-                    </span>
-                  ))}
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
+          {error && <p className="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">{error}</p>}
+          {user && <FarmSetupForm userId={user.uid} redirectTo="/farms" />}
+        </section>
       </div>
     </main>
   )
