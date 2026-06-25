@@ -184,7 +184,7 @@ body.cursor-field-active [role="button"] {
   }
 
   .field-input {
-    @apply w-full rounded-2xl border border-white/80 bg-surface/80 px-4 py-3 text-base font-semibold text-ink shadow-sm outline-none transition focus:border-leaf/40 focus:ring-4 focus:ring-leaf/15;
+    @apply w-full rounded-2xl border border-primary-200 bg-white px-4 py-3 text-base font-semibold text-ink shadow-[0_10px_24px_-18px_rgba(18,38,28,0.45)] outline-none ring-1 ring-primary-100/70 transition focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-200/60;
   }
 
   .btn-primary {

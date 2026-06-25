@@ -215,10 +215,10 @@ export default function OnboardingPage() {
                       key={crop}
                       type="button"
                       onClick={() => toggleCrop(crop)}
-                      className={`rounded-xl border px-4 py-3 text-sm font-bold capitalize transition ${
+                      className={`rounded-2xl border px-4 py-3 text-sm font-bold capitalize shadow-[0_10px_24px_-18px_rgba(18,38,28,0.45)] ring-1 transition ${
                         selectedCrops.includes(crop)
-                          ? 'border-primary-700 bg-primary-700 text-white'
-                          : 'border-field-soil/15 bg-white text-primary-900 hover:border-primary-400'
+                          ? 'border-primary-700 bg-primary-700 text-white ring-primary-700/30'
+                          : 'border-primary-200 bg-white text-primary-900 ring-primary-100/70 hover:border-primary-400 hover:ring-primary-200/80'
                       }`}
                     >
                       {crop}

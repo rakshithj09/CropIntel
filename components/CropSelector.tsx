@@ -29,7 +29,7 @@ export default function CropSelector({
         value={crops.includes(selectedCrop) ? selectedCrop : ''}
         onChange={(e) => onCropChange(e.target.value)}
         disabled={crops.length === 0}
-        className="field-input cursor-pointer border-primary-200 bg-white text-primary-950 shadow-[0_10px_24px_-18px_rgba(18,38,28,0.45)] ring-1 ring-primary-100/70 focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-200/60"
+        className="field-input cursor-pointer"
       >
         {crops.length === 0 && <option value="">No crops on this farm</option>}
         {crops.map((crop) => (
