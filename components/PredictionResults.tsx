@@ -40,6 +40,19 @@ export default function PredictionResults({
   const confidenceScale = maxConfidence <= 1 ? 100 : 1
   const toPct = (value: number) =>
     Math.min(100, Math.max(0, value * confidenceScale))
+
+  // Always render the matches highest-first, and derive the headline from the
+  // actual #1 entry. The backend SHOULD send `disease`/`confidence` equal to the
+  // top of `all_predictions`, but older/alternate inference builds have shipped a
+  // headline that disagreed with their own ranked list (e.g. naming a 45% class
+  // while a 76% class sat on top). Trusting the sorted list keeps the headline
+  // and the first bar in lockstep no matter what the service returns.
+  const sortedPredictions = [...prediction.all_predictions]
+    .filter((p) => p && typeof p.confidence === 'number' && !Number.isNaN(p.confidence))
+    .sort((a, b) => b.confidence - a.confidence)
+  const topPrediction = sortedPredictions[0]
+  const headlineDisease = topPrediction?.disease ?? prediction.disease
+  const headlineConfidence = topPrediction?.confidence ?? prediction.confidence
   const getStatusColor = () => {
     if (prediction.not_in_catalog) {
       return 'bg-amber-50 text-amber-900 border-amber-200'
@@ -101,7 +114,7 @@ export default function PredictionResults({
               Likely field issue
             </h3>
             <p className="mt-1 text-2xl font-bold text-primary-900">
-              {prediction.disease}
+              {headlineDisease}
             </p>
           </div>
           <div className="sm:text-right">
@@ -109,7 +122,7 @@ export default function PredictionResults({
               Match strength
             </h3>
             <p className="mt-1 text-2xl font-bold tabular-nums text-primary-800">
-              {toPct(prediction.confidence).toFixed(1)}%
+              {toPct(headlineConfidence).toFixed(1)}%
             </p>
           </div>
         </div>
@@ -157,7 +170,7 @@ export default function PredictionResults({
           Other possible matches
         </h3>
         <div className="space-y-3">
-          {prediction.all_predictions.map((pred, index) => {
+          {sortedPredictions.map((pred, index) => {
             const pctClamped = toPct(pred.confidence)
             const pctOneDecimal = pctClamped.toFixed(1)
             return (

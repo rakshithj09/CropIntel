@@ -22,8 +22,8 @@ const FAQS = [
     a: "A single affected leaf, filling the frame, in good light. If no leaf is detected the app asks you to retake — clear, close, one leaf.",
   },
   {
-    q: "Is it free and open source?",
-    a: "Yes — the full stack, model included, is open source on GitHub. You can run it yourself or try the hosted scanner.",
+    q: "Is it publicly available?",
+    a: "CropIntel is available as a hosted scanner. The product, model pipeline, and deployment details are maintained privately.",
   },
   {
     q: "How is the model trained?",

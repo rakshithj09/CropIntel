@@ -8,6 +8,7 @@ import ImageUpload from '@/components/ImageUpload'
 import CropSelector from '@/components/CropSelector'
 import StateSelector from '@/components/StateSelector'
 import PredictionResults from '@/components/PredictionResults'
+import CropMismatchBlock from '@/components/CropMismatchBlock'
 import DiseaseInfo from '@/components/DiseaseInfo'
 import PredictionHistory from '@/components/PredictionHistory'
 import ExportResults from '@/components/ExportResults'
@@ -211,10 +212,17 @@ export default function Home() {
       ? `Using common ${selectedCrop} disease patterns for ${selectedState}. If this does not match what you see, check the other possible matches below.`
       : undefined
 
-  const handlePredict = async () => {
+  const handlePredict = async (cropOverride?: string) => {
     if (!selectedImage) {
       setError('Please select an image first')
       return
+    }
+
+    // When re-running under a suggested crop, switch the selection too so the
+    // rest of the UI (disease info, regional filter) stays consistent.
+    const cropToUse = cropOverride ?? selectedCrop
+    if (cropOverride && cropOverride !== selectedCrop) {
+      setSelectedCrop(cropOverride)
     }
 
     setLoading(true)
@@ -224,7 +232,7 @@ export default function Home() {
     try {
       const formData = new FormData()
       formData.append('image', selectedImage)
-      formData.append('crop', selectedCrop)
+      formData.append('crop', cropToUse)
 
       const response = await fetch('/api/predict', {
         method: 'POST',
@@ -248,13 +256,14 @@ export default function Home() {
       const merged = { ...data, ...filtered }
       setPrediction(merged)
 
-      // Save to history
-      if (imageUrl) {
+      // Save to history — but not a blocked wrong-crop result, which isn't a
+      // real diagnosis for the selected crop.
+      if (imageUrl && !merged.crop_mismatch) {
         const confidencePercent =
           typeof merged.confidence === 'number' && merged.confidence <= 1
             ? merged.confidence * 100
             : merged.confidence
-        savePredictionToHistory(selectedCrop, merged.disease, confidencePercent, imageUrl)
+        savePredictionToHistory(cropToUse, merged.disease, confidencePercent, imageUrl)
       }
     } catch (err: any) {
       setError(err.message || 'An error occurred')
@@ -447,7 +456,7 @@ export default function Home() {
                       <div className="flex items-end">
                         <button
                           type="button"
-                          onClick={handlePredict}
+                          onClick={() => handlePredict()}
                           disabled={!selectedImage || loading}
                           className="btn-primary w-full md:max-w-md"
                         >
@@ -469,7 +478,21 @@ export default function Home() {
                     </div>
                   )}
 
-                  {photoMode === 'single' && prediction && (
+                  {photoMode === 'single' && prediction && prediction.crop_mismatch && (
+                    <CropMismatchBlock
+                      selectedCrop={selectedCrop}
+                      suggestedCrop={prediction.suggested_crop ?? null}
+                      suggestedConfidence={prediction.suggested_confidence ?? null}
+                      onUseSuggested={
+                        prediction.suggested_crop
+                          ? () => handlePredict(prediction.suggested_crop)
+                          : undefined
+                      }
+                      onRetake={handleClear}
+                    />
+                  )}
+
+                  {photoMode === 'single' && prediction && !prediction.crop_mismatch && (
                     <>
                       <PredictionResults prediction={prediction} regionNote={regionNote} />
                       <Diagnosis
