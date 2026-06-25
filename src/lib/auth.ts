@@ -22,14 +22,18 @@ export async function signUpWithEmail(name: string, email: string, password: str
   const auth = getFirebaseAuth()
   const db = getFirebaseDb()
   const credential = await createUserWithEmailAndPassword(auth, email, password)
-  await updateProfile(credential.user, { displayName: name })
-  await setDoc(doc(db, 'users', credential.user.uid), {
-    name,
-    email: credential.user.email ?? email,
-    emailVerified: credential.user.emailVerified,
-    createdAt: serverTimestamp(),
+  await Promise.all([
+    updateProfile(credential.user, { displayName: name }),
+    setDoc(doc(db, 'users', credential.user.uid), {
+      name,
+      email: credential.user.email ?? email,
+      emailVerified: credential.user.emailVerified,
+      createdAt: serverTimestamp(),
+    }),
+  ])
+  void sendEmailVerification(credential.user).catch((error) => {
+    console.error('Could not send verification email', error)
   })
-  await sendEmailVerification(credential.user)
   return credential.user
 }
 

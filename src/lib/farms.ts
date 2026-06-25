@@ -11,6 +11,7 @@ import {
   serverTimestamp,
   setDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore'
 import { getFirebaseDb } from './firebase'
 import type { Diagnosis, Farm, FarmMember } from './types'
@@ -39,20 +40,12 @@ function makeJoinCode() {
   return code
 }
 
-async function generateUniqueJoinCode() {
-  const db = getFirebaseDb()
-  for (let attempt = 0; attempt < 10; attempt += 1) {
-    const joinCode = makeJoinCode()
-    const existing = await getDocs(query(collection(db, 'farms'), where('joinCode', '==', joinCode), limit(1)))
-    if (existing.empty) return joinCode
-  }
-  throw new Error('Could not generate a unique farm join code. Please try again.')
-}
-
 export async function createFarmForUser(userId: string, input: CreateFarmInput) {
   const db = getFirebaseDb()
-  const joinCode = await generateUniqueJoinCode()
+  const joinCode = makeJoinCode()
   const farmRef = doc(collection(db, 'farms'))
+  const memberRef = doc(db, 'farmMembers', buildMemberId(farmRef.id, userId))
+  const batch = writeBatch(db)
   const farmPayload = {
     name: input.name.trim(),
     ownerId: userId,
@@ -67,13 +60,14 @@ export async function createFarmForUser(userId: string, input: CreateFarmInput) 
     createdAt: serverTimestamp(),
   }
 
-  await setDoc(farmRef, farmPayload)
-  await setDoc(doc(db, 'farmMembers', buildMemberId(farmRef.id, userId)), {
+  batch.set(farmRef, farmPayload)
+  batch.set(memberRef, {
     farmId: farmRef.id,
     userId,
     role: 'owner',
     joinedAt: serverTimestamp(),
   })
+  await batch.commit()
 
   return { id: farmRef.id, ...farmPayload } as Farm
 }
