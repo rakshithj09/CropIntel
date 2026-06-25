@@ -14,8 +14,18 @@ import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firest
 import { getFirebaseAuth, getFirebaseDb } from './firebase'
 import type { UserProfile } from './types'
 
-export function subscribeToAuth(callback: (user: User | null) => void) {
-  return onAuthStateChanged(getFirebaseAuth(), callback)
+export function subscribeToAuth(
+  callback: (user: User | null) => void,
+  onError?: (error: Error) => void
+) {
+  try {
+    return onAuthStateChanged(getFirebaseAuth(), callback, (error) => {
+      onError?.(error)
+    })
+  } catch (error) {
+    onError?.(error instanceof Error ? error : new Error('Could not initialize Firebase authentication.'))
+    return () => {}
+  }
 }
 
 export async function signUpWithEmail(name: string, email: string, password: string) {

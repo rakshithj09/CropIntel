@@ -22,7 +22,7 @@
   --color-grad-3: #ecdcc2; /* warm sand wash */
 
   --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
-  --font-body: "Satoshi", var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-space), ui-monospace, monospace;
 
   --radius-card: 20px;

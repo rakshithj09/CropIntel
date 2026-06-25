@@ -24,14 +24,26 @@ export default function SignupPage() {
   }, [])
 
   useEffect(() => {
-    return subscribeToAuth(async (user) => {
-      if (!user) {
+    return subscribeToAuth(
+      async (user) => {
+        if (!user) {
+          setCheckingAuth(false)
+          return
+        }
+
+        try {
+          const farms = await getUserFarms(user.uid)
+          router.replace(farms.length > 0 ? '/' : '/onboarding')
+        } catch (err: any) {
+          setError(err.message || 'Could not load your farm data.')
+          setCheckingAuth(false)
+        }
+      },
+      (err) => {
+        setError(err.message)
         setCheckingAuth(false)
-        return
       }
-      const farms = await getUserFarms(user.uid)
-      router.replace(farms.length > 0 ? '/' : '/onboarding')
-    })
+    )
   }, [router])
 
   const handleSubmit = async (event: FormEvent) => {

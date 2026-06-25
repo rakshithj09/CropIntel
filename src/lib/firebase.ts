@@ -11,7 +11,27 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 }
 
+const requiredFirebaseConfig = [
+  ['NEXT_PUBLIC_FIREBASE_API_KEY', firebaseConfig.apiKey],
+  ['NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN', firebaseConfig.authDomain],
+  ['NEXT_PUBLIC_FIREBASE_PROJECT_ID', firebaseConfig.projectId],
+  ['NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET', firebaseConfig.storageBucket],
+  ['NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID', firebaseConfig.messagingSenderId],
+  ['NEXT_PUBLIC_FIREBASE_APP_ID', firebaseConfig.appId],
+] as const
+
+function getMissingFirebaseConfig() {
+  return requiredFirebaseConfig
+    .filter(([, value]) => !value)
+    .map(([key]) => key)
+}
+
 function getFirebaseApp() {
+  const missingConfig = getMissingFirebaseConfig()
+  if (missingConfig.length > 0) {
+    throw new Error(`Firebase is not configured. Missing: ${missingConfig.join(', ')}`)
+  }
+
   return getApps().length ? getApp() : initializeApp(firebaseConfig)
 }
 

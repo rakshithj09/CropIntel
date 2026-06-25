@@ -52,6 +52,7 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
   const [prediction, setPrediction] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [startupError, setStartupError] = useState<string | null>(null)
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [activeView] = useState<MainView>(initialView)
   // Initialize with a sample outbreak in Russellville, Arkansas
@@ -213,27 +214,36 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
   }, [])
 
   useEffect(() => {
-    return subscribeToAuth(async (currentUser) => {
-      if (!currentUser) {
-        router.replace('/login')
-        return
-      }
-
-      setUser(currentUser)
-      setAuthLoading(false)
-      setFarmsLoading(true)
-      try {
-        const userFarms = await getUserFarms(currentUser.uid)
-        if (userFarms.length === 0) {
-          router.replace('/onboarding')
+    return subscribeToAuth(
+      async (currentUser) => {
+        if (!currentUser) {
+          router.replace('/login')
           return
         }
-        setFarms(userFarms)
-        setSelectedFarmId((current) => current || userFarms[0].id)
-      } finally {
+
+        setUser(currentUser)
+        setAuthLoading(false)
+        setFarmsLoading(true)
+        try {
+          const userFarms = await getUserFarms(currentUser.uid)
+          if (userFarms.length === 0) {
+            router.replace('/onboarding')
+            return
+          }
+          setFarms(userFarms)
+          setSelectedFarmId((current) => current || userFarms[0].id)
+        } catch (err: any) {
+          setStartupError(err.message || 'Could not load your farm data.')
+        } finally {
+          setFarmsLoading(false)
+        }
+      },
+      (err) => {
+        setStartupError(err.message)
+        setAuthLoading(false)
         setFarmsLoading(false)
       }
-    })
+    )
   }, [router])
 
   useEffect(() => {
@@ -369,6 +379,17 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
     return (
       <main className="flex min-h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary-700" aria-label="Loading" />
+      </main>
+    )
+  }
+
+  if (startupError) {
+    return (
+      <main className="flex min-h-screen items-center justify-center px-4">
+        <div className="max-w-md rounded-2xl border border-rose-200 bg-rose-50 p-6 text-rose-950">
+          <h1 className="text-xl font-bold">CropIntel could not start</h1>
+          <p className="mt-3 text-sm leading-6">{startupError}</p>
+        </div>
       </main>
     )
   }

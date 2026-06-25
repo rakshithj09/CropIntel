@@ -10,7 +10,7 @@ module.exports = {
     extend: {
       fontFamily: {
         display: ['var(--font-bricolage)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        sans: ['Satoshi', 'var(--font-bricolage)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-bricolage)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         mono: ['var(--font-space)', 'ui-monospace', 'monospace'],
       },
       colors: {

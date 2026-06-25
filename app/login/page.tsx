@@ -22,15 +22,26 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    return subscribeToAuth(async (user) => {
-      if (!user) {
-        setCheckingAuth(false)
-        return
-      }
+    return subscribeToAuth(
+      async (user) => {
+        if (!user) {
+          setCheckingAuth(false)
+          return
+        }
 
-      const farms = await getUserFarms(user.uid)
-      router.replace(farms.length > 0 ? '/' : '/onboarding')
-    })
+        try {
+          const farms = await getUserFarms(user.uid)
+          router.replace(farms.length > 0 ? '/' : '/onboarding')
+        } catch (err: any) {
+          setError(err.message || 'Could not load your farm data.')
+          setCheckingAuth(false)
+        }
+      },
+      (err) => {
+        setError(err.message)
+        setCheckingAuth(false)
+      }
+    )
   }, [router])
 
   const handleSubmit = async (event: FormEvent) => {

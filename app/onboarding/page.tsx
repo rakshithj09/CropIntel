@@ -29,15 +29,21 @@ export default function OnboardingPage() {
   const [joinCode, setJoinCode] = useState('')
 
   useEffect(() => {
-    return subscribeToAuth((currentUser) => {
-      if (!currentUser) {
-        router.replace('/login')
-        return
-      }
+    return subscribeToAuth(
+      (currentUser) => {
+        if (!currentUser) {
+          router.replace('/login')
+          return
+        }
 
-      setUser(currentUser)
-      setCheckingAuth(false)
-    })
+        setUser(currentUser)
+        setCheckingAuth(false)
+      },
+      (err) => {
+        setError(err.message)
+        setCheckingAuth(false)
+      }
+    )
   }, [router])
 
   const toggleCrop = (crop: string) => {
