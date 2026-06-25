@@ -174,8 +174,8 @@ export default function PredictionHistory({ onSelectHistory }: PredictionHistory
                       </span>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="max-w-full truncate rounded-lg bg-field-cream px-3 py-1 text-sm font-semibold text-field-soil">
-                        {farmLabel}
+                      <span className="max-w-full truncate rounded-lg bg-field-cream px-3 py-1 text-sm font-semibold capitalize text-field-soil">
+                        {record.crop}
                       </span>
                       <span className="text-sm font-bold text-primary-700">
                         {record.confidence.toFixed(1)}% match
@@ -209,8 +209,8 @@ export default function PredictionHistory({ onSelectHistory }: PredictionHistory
                         </p>
                       </div>
                       <div className="rounded-xl bg-field-cream/60 p-3">
-                        <p className="text-xs font-bold uppercase tracking-wide text-field-soil">Crop</p>
-                        <p className="mt-1 font-semibold capitalize text-primary-900">{record.crop}</p>
+                        <p className="text-xs font-bold uppercase tracking-wide text-field-soil">Farm</p>
+                        <p className="mt-1 font-semibold text-primary-900">{farmLabel}</p>
                       </div>
                     </div>
 
