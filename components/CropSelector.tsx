@@ -24,6 +24,7 @@ export default function CropSelector({
         className="field-input cursor-pointer"
       >
         {crops.length === 0 && <option value="">No crops on this farm</option>}
+        {crops.length > 0 && <option value="">Select a crop in the photo</option>}
         {crops.map((crop) => (
           <option key={crop} value={crop}>
             {crop.charAt(0).toUpperCase() + crop.slice(1)}

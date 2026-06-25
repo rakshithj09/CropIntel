@@ -26,6 +26,11 @@ interface PredictionHistoryProps {
   onSelectHistory: (record: PredictionRecord) => void
 }
 
+function toConfidencePercent(value: number): number {
+  if (value > 0 && value <= 1) return value * 100
+  return value
+}
+
 export default function PredictionHistory({ onSelectHistory }: PredictionHistoryProps) {
   const [history, setHistory] = useState<PredictionRecord[]>([])
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -127,9 +132,9 @@ export default function PredictionHistory({ onSelectHistory }: PredictionHistory
         {history.map((record) => {
             const isExpanded = expandedId === record.id
             const diseaseInfo = getDiseaseInfo(record.disease, record.crop)
-            const otherPredictions = record.allPredictions?.filter(
-              (pred) => pred.disease.toLowerCase() !== record.disease.toLowerCase()
-            )
+            const otherPredictions = record.allPredictions
+              ?.filter((pred) => pred.disease.toLowerCase() !== record.disease.toLowerCase())
+              .sort((a, b) => toConfidencePercent(b.confidence) - toConfidencePercent(a.confidence))
             const farmLabel = record.farmName
               ? `${record.farmName}${record.farmState ? ` (${record.farmState})` : ''}`
               : record.crop
@@ -236,7 +241,7 @@ export default function PredictionHistory({ onSelectHistory }: PredictionHistory
                             <div key={`${pred.disease}-${index}`} className="flex items-center justify-between gap-3 rounded-xl bg-field-cream/60 px-3 py-2 text-sm">
                               <span className="min-w-0 truncate text-field-soil">{pred.disease}</span>
                               <span className="shrink-0 font-semibold text-primary-800">
-                                {(pred.confidence > 0 && pred.confidence <= 1 ? pred.confidence * 100 : pred.confidence).toFixed(1)}%
+                                {toConfidencePercent(pred.confidence).toFixed(1)}%
                               </span>
                             </div>
                           ))}

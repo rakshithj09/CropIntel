@@ -84,7 +84,7 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
   const [farms, setFarms] = useState<Farm[]>([])
   const [selectedFarmId, setSelectedFarmId] = useState('')
   const [selectedImage, setSelectedImage] = useState<File | null>(null)
-  const [selectedCrop, setSelectedCrop] = useState<string>('corn')
+  const [selectedCrop, setSelectedCrop] = useState('')
   const [photoMode, setPhotoMode] = useState<'single' | 'compare'>('single')
   const [prediction, setPrediction] = useState<any>(null)
   const [loading, setLoading] = useState(false)
@@ -227,6 +227,7 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
   ])
   const selectedFarm = farms.find((farm) => farm.id === selectedFarmId) ?? null
   const availableCrops = useMemo(() => selectedFarm?.crops ?? [], [selectedFarm])
+  const hasSelectedCrop = selectedFarm !== null && availableCrops.includes(selectedCrop)
   const farmLocation =
     selectedFarm && typeof selectedFarm.lat === 'number' && typeof selectedFarm.lng === 'number'
       ? { lat: selectedFarm.lat, lng: selectedFarm.lng, crops: selectedFarm.crops }
@@ -268,7 +269,7 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
             return
           }
           setFarms(userFarms)
-          setSelectedFarmId((current) => current || userFarms[0].id)
+          setSelectedFarmId((current) => (userFarms.some((farm) => farm.id === current) ? current : ''))
         } catch (err: any) {
           setStartupError(err.message || 'Could not load your farm data.')
         } finally {
@@ -283,22 +284,29 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
     )
   }, [router])
 
-  useEffect(() => {
-    if (!selectedFarm || availableCrops.length === 0) return
-    if (!availableCrops.includes(selectedCrop)) {
-      setSelectedCrop(availableCrops[0])
-    }
-  }, [availableCrops, selectedCrop, selectedFarm])
-
   const applyRegionalFilter = useCallback(
-    (raw: PredictionPayload) => selectedFarm ? applyRegionalPrior(raw, selectedCrop, selectedFarm.stateCode) : raw,
-    [selectedCrop, selectedFarm]
+    (raw: PredictionPayload) =>
+      hasSelectedCrop && selectedFarm ? applyRegionalPrior(raw, selectedCrop, selectedFarm.stateCode) : raw,
+    [hasSelectedCrop, selectedCrop, selectedFarm]
   )
 
   const regionNote =
-    selectedFarm && getRelevantDiseasesForCropState(selectedCrop, selectedFarm.stateCode) !== null
+    hasSelectedCrop && selectedFarm && getRelevantDiseasesForCropState(selectedCrop, selectedFarm.stateCode) !== null
       ? `Regional adjustment: results are gently nudged toward diseases common for ${selectedCrop} at ${selectedFarm.name} (${selectedFarm.stateCode}). Other states or crops show the model's raw output.`
       : undefined
+
+  const handleFarmChange = (farmId: string) => {
+    setSelectedFarmId(farmId)
+    setSelectedCrop('')
+    setPrediction(null)
+    setError(null)
+  }
+
+  const handleCropChange = (crop: string) => {
+    setSelectedCrop(crop)
+    setPrediction(null)
+    setError(null)
+  }
 
   const handlePredict = async () => {
     if (!user) {
@@ -311,7 +319,7 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
       return
     }
 
-    if (!availableCrops.includes(selectedCrop)) {
+    if (!hasSelectedCrop) {
       setError(`Select a crop grown on ${selectedFarm.name} before running disease detection.`)
       return
     }
@@ -571,10 +579,10 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
                     <FarmSelector
                       farms={farms}
                       selectedFarmId={selectedFarmId}
-                      onFarmChange={setSelectedFarmId}
+                      onFarmChange={handleFarmChange}
                       loading={farmsLoading}
                     />
-                    <CropSelector crops={availableCrops} selectedCrop={selectedCrop} onCropChange={setSelectedCrop} />
+                    <CropSelector crops={availableCrops} selectedCrop={selectedCrop} onCropChange={handleCropChange} />
                   </div>
 
                   {photoMode === 'single' && (
@@ -584,7 +592,7 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
                         <button
                           type="button"
                           onClick={handlePredict}
-                          disabled={!selectedImage || !selectedFarm || availableCrops.length === 0 || loading}
+                          disabled={!selectedImage || !hasSelectedCrop || loading}
                           className="btn-primary w-full md:max-w-md"
                         >
                           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
@@ -595,7 +603,13 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
                   )}
 
                   {photoMode === 'compare' && (
-                    <HealthComparisonPanel crop={selectedCrop} applyRegionalFilter={applyRegionalFilter} />
+                    hasSelectedCrop ? (
+                      <HealthComparisonPanel crop={selectedCrop} applyRegionalFilter={applyRegionalFilter} />
+                    ) : (
+                      <div className="rounded-xl border border-dashed border-field-soil/20 bg-field-cream px-4 py-5 text-sm font-semibold text-field-soil">
+                        Select a farm and crop before comparing field photos.
+                      </div>
+                    )
                   )}
 
                   {error && (

@@ -33,9 +33,9 @@ export default function PredictionResults({
   prediction,
   regionNote,
 }: PredictionResultsProps) {
-  const otherPredictions = prediction.all_predictions.filter(
-    (pred) => pred.disease.toLowerCase() !== prediction.disease.toLowerCase()
-  )
+  const otherPredictions = prediction.all_predictions
+    .filter((pred) => pred.disease.toLowerCase() !== prediction.disease.toLowerCase())
+    .sort((a, b) => toConfidencePercent(b.confidence) - toConfidencePercent(a.confidence))
 
   const getStatusColor = () => {
     if (prediction.not_in_catalog) {
