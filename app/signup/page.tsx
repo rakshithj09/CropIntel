@@ -19,6 +19,11 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    const emailParam = new URLSearchParams(window.location.search).get('email')
+    if (emailParam) setEmail(emailParam)
+  }, [])
+
+  useEffect(() => {
     return subscribeToAuth(async (user) => {
       if (!user) {
         setCheckingAuth(false)

@@ -5,8 +5,12 @@ import { useRouter } from 'next/navigation'
 import { FormEvent, useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import AuthShell from '@/components/auth/AuthShell'
-import { resetPassword, signInWithEmail, subscribeToAuth } from '@/src/lib/auth'
+import { getEmailSignInMethods, resetPassword, signInWithEmail, subscribeToAuth } from '@/src/lib/auth'
 import { getUserFarms } from '@/src/lib/farms'
+
+function getAuthErrorCode(error: unknown) {
+  return typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : ''
+}
 
 export default function LoginPage() {
   const router = useRouter()
@@ -36,10 +40,23 @@ export default function LoginPage() {
     setMessage(null)
 
     try {
-      const user = await signInWithEmail(email, password)
+      const trimmedEmail = email.trim()
+      const signInMethods = await getEmailSignInMethods(trimmedEmail)
+      if (signInMethods.length === 0) {
+        router.replace(`/signup?email=${encodeURIComponent(trimmedEmail)}`)
+        return
+      }
+
+      const user = await signInWithEmail(trimmedEmail, password)
       const farms = await getUserFarms(user.uid)
       router.replace(farms.length > 0 ? '/' : '/onboarding')
     } catch (err: any) {
+      const code = getAuthErrorCode(err)
+      if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+        setError('That password is incorrect. Enter a new password or reset it below.')
+        return
+      }
+
       setError(err.message || 'Could not sign in. Check your email and password.')
     } finally {
       setLoading(false)
@@ -56,8 +73,15 @@ export default function LoginPage() {
     setError(null)
     setMessage(null)
     try {
-      await resetPassword(email.trim())
-      setMessage('Password reset email sent.')
+      const trimmedEmail = email.trim()
+      const signInMethods = await getEmailSignInMethods(trimmedEmail)
+      if (signInMethods.length === 0) {
+        router.replace(`/signup?email=${encodeURIComponent(trimmedEmail)}`)
+        return
+      }
+
+      await resetPassword(trimmedEmail)
+      setMessage(`Password reset email sent to ${trimmedEmail}.`)
     } catch (err: any) {
       setError(err.message || 'Could not send password reset email.')
     } finally {
@@ -124,14 +148,19 @@ export default function LoginPage() {
           {loading && <Loader2 className="h-4 w-4 animate-spin" />}
           Sign in
         </button>
-        <button
-          type="button"
-          onClick={handleForgotPassword}
-          disabled={loading}
-          className="btn-secondary w-full border-ink/20 bg-white"
-        >
-          Forgot password
-        </button>
+        <div className="pt-2">
+          <p className="mb-3 text-center text-sm text-field-soil">
+            Need a new password? Send a reset link to your email.
+          </p>
+          <button
+            type="button"
+            onClick={handleForgotPassword}
+            disabled={loading}
+            className="btn-secondary w-full border-ink/20 bg-white"
+          >
+            Reset password
+          </button>
+        </div>
       </form>
     </AuthShell>
   )
