@@ -13,6 +13,7 @@ export default function FarmsPage() {
   const router = useRouter()
   const [farms, setFarms] = useState<Farm[]>([])
   const [loading, setLoading] = useState(true)
+  const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
     return subscribeToAuth(async (user) => {
@@ -25,6 +26,16 @@ export default function FarmsPage() {
       setLoading(false)
     })
   }, [router])
+
+  useEffect(() => {
+    const onScroll = () => {
+      setScrolled(window.scrollY > 12)
+    }
+
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   const handleSignOut = async () => {
     await signOutUser()
@@ -42,7 +53,11 @@ export default function FarmsPage() {
   return (
     <main className="min-h-screen px-4 pb-8 pt-24 sm:px-6 sm:pt-28 lg:px-8">
       <header className="fixed inset-x-0 top-0 z-50 px-4 py-3">
-        <nav className="glass mx-auto flex max-w-6xl items-center justify-between rounded-full px-5 py-3">
+        <nav
+          className={`mx-auto flex max-w-6xl items-center justify-between rounded-full px-5 py-3 transition-all duration-300 ${
+            scrolled ? 'glass' : 'border border-transparent'
+          }`}
+        >
           <Link href="/diagnosis" className="cropintel-brand flex min-w-0 items-center gap-2 text-left">
             <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-leaf">
               <Image

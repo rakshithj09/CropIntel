@@ -491,7 +491,7 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
           ))}
           <Link
             href="/farms"
-            className="touch-manipulation flex min-h-[40px] items-center justify-center rounded-full px-2 py-2 text-center text-[11px] font-semibold text-ink-soft transition-all hover:bg-white/70 hover:text-ink sm:text-sm"
+            className="touch-manipulation min-h-[40px] rounded-full px-2 py-2 text-center text-[11px] font-semibold text-ink-soft transition-all hover:bg-white/70 hover:text-ink sm:text-sm"
           >
             <span className="truncate">Farms</span>
           </Link>
