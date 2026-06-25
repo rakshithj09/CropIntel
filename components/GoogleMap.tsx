@@ -344,20 +344,6 @@ export default function GoogleMapComponent({
                 </p>
               )}
               
-              {selectedReport.reporterVerified !== undefined && (
-                <div className="mb-3">
-                  <span
-                    className={`inline-block text-xs font-bold px-2.5 py-1 rounded-full border ${
-                      selectedReport.reporterVerified
-                        ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
-                        : 'bg-slate-100 text-slate-700 border-slate-300'
-                    }`}
-                  >
-                    {selectedReport.reporterVerified ? 'Verified farmer report' : 'Unverified farmer report'}
-                  </span>
-                </div>
-              )}
-
               <div className="border-t border-gray-200 pt-2 mt-2">
                 <p className="text-xs text-gray-500">
                   <span className="font-semibold">Location:</span> {selectedReport.lat.toFixed(4)}, {selectedReport.lng.toFixed(4)}

@@ -22,6 +22,7 @@ Table of contents
 ## Overview
 CropIntel provides:
 - Browser UI (Next.js, app/) that uploads images to /api/predict.
+- Firebase Authentication for email/password accounts and Firestore farm management.
 - A lightweight inference service (FastAPI in ml/serve) that hosts per-crop TFLite models.
 - Optional outbreak mapping using Google Maps (client-side).
 - Single-container production deployment via docker-compose.prod.yml which runs both web + inference.
@@ -29,8 +30,11 @@ CropIntel provides:
 ## Architecture & key files
 - app/ — Next.js UI (React + Tailwind). API routes live here (app/api/*).
   - app/page.tsx — main UI page and image upload flow.
+  - app/login, app/signup, app/onboarding, app/farms — Firebase Auth and farm management pages.
   - app/layout.tsx — global layout, fonts, footer.
   - app/api/predict/* or app/api/predict/route.ts — Next.js API route which forwards to the inference service.
+- src/lib/firebase.ts — Firebase client initialization.
+- src/lib/auth.ts, src/lib/farms.ts, src/lib/types.ts — Auth, Firestore farm/diagnosis actions, and shared TypeScript types.
 - ml/
   - ml/serve/inference_app.py — FastAPI inference server (loads TFLite models).
   - ml/inference/ — inference helpers and predictor code.
@@ -81,6 +85,29 @@ npm run dev    # defaults: next dev -H 0.0.0.0 -p 3050
 # use PORT or CLI to change port: npm run dev -- -p 3051
 ```
 
+4) Firebase setup for Auth and Firestore
+- Create a Firebase project.
+- Enable Authentication -> Sign-in method -> Email/Password.
+- Create a Firestore database.
+- Add a Web app in Firebase project settings and copy the client config values into `.env.local`.
+- Firestore collections are created by app actions automatically; do not create them manually.
+
+Required Firebase environment values:
+```bash
+NEXT_PUBLIC_FIREBASE_API_KEY=...
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=...
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=...
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=...
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=...
+NEXT_PUBLIC_FIREBASE_APP_ID=...
+```
+
+Firestore collections written by the app:
+- `users/{userId}` for user profile records.
+- `farms/{farmId}` for farm records and generated join codes.
+- `farmMembers/{farmId_userId}` for owner/member access.
+- `diagnoses/{diagnosisId}` for completed disease detections.
+
 ## API contract (what the frontend expects)
 - POST /api/predict (Next.js API route)
   - Form data: image file under `image`, `crop` string
@@ -126,6 +153,12 @@ npm run dev    # defaults: next dev -H 0.0.0.0 -p 3050
   - Missing models: check ml/models/ and the .cropintel-fetch-ok marker.
 
 ## Environment variables
+- NEXT_PUBLIC_FIREBASE_API_KEY — Firebase Web API key.
+- NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN — Firebase Auth domain.
+- NEXT_PUBLIC_FIREBASE_PROJECT_ID — Firebase project ID used by Auth and Firestore.
+- NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET — Firebase storage bucket value from the web app config.
+- NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID — Firebase sender ID from the web app config.
+- NEXT_PUBLIC_FIREBASE_APP_ID — Firebase web app ID.
 - NEXT_PUBLIC_GOOGLE_MAPS_API_KEY — optional, used by outbreak map (client-side).
 - CROPINTEL_MODELS_URL — override default model bundle URL.
 - CROPINTEL_ADMIN_TOKEN — admin token to guard /admin/reload (if enabled).

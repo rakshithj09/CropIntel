@@ -283,19 +283,12 @@ export default function NotificationSystem({
         const match = affected.find((a) => a.farmer.id === targetFarmerId)
         if (!match) continue
 
-        const verifiedTail =
-          report.reporterVerified === true
-            ? ' (verified farmer report)'
-            : report.reporterVerified === false
-              ? ' (unverified farmer report)'
-              : ' (community report)'
-
         next.push({
           id: `${report.id}-${targetFarmerId}`,
           farmerId: targetFarmerId,
           outbreakId: report.id,
           distance: match.distance,
-          message: `${generateNotificationMessage(outbreakLocation)}${verifiedTail}`,
+          message: `${generateNotificationMessage(outbreakLocation)} (community report)`,
           severity: outbreakLocation.severity,
           read: readByOutbreak.get(report.id) ?? false,
           createdAt: createdByOutbreak.get(report.id) ?? new Date().toISOString(),
@@ -449,17 +442,6 @@ export default function NotificationSystem({
                                       NOTIFICATION_TIME_FORMAT
                                     )}
                                   </span>
-                                  {outbreak.reporterVerified !== undefined && (
-                                    <span
-                                      className={`inline-flex rounded-full border px-2 py-0.5 font-semibold ${
-                                        outbreak.reporterVerified
-                                          ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                                          : 'border-slate-200 bg-slate-50 text-slate-600'
-                                      }`}
-                                    >
-                                      {outbreak.reporterVerified ? 'Verified' : 'Unverified'}
-                                    </span>
-                                  )}
                                 </div>
                               )}
                             </div>
