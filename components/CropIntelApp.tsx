@@ -437,6 +437,7 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
                   { id: 'diagnose', label: 'Diagnosis', href: '/diagnosis' },
                   { id: 'history', label: 'Saved checks', href: '/saved-checks' },
                   { id: 'outbreaks', label: 'Local risk', href: '/local-risk' },
+                  { id: 'farms', label: 'Farms', href: '/farms' },
                 ] as const
               ).map(({ id, label, href }) => (
                 <Link
@@ -449,12 +450,6 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
                   {label}
                 </Link>
               ))}
-              <Link
-                href="/farms"
-                className="cropintel-menu-link text-sm font-medium text-ink-soft transition-colors hover:text-ink"
-              >
-                Farms
-              </Link>
             </div>
 
             <div className="flex shrink-0 items-center justify-end gap-1.5 sm:gap-2">
@@ -475,6 +470,7 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
               { id: 'diagnose', label: 'Diagnosis', href: '/diagnosis' },
               { id: 'history', label: 'Saved checks', href: '/saved-checks' },
               { id: 'outbreaks', label: 'Local risk', href: '/local-risk' },
+              { id: 'farms', label: 'Farms', href: '/farms' },
             ] as const
           ).map(({ id, label, href }) => (
             <Link
@@ -489,12 +485,6 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
               <span className="truncate">{label}</span>
             </Link>
           ))}
-          <Link
-            href="/farms"
-            className="touch-manipulation min-h-[40px] rounded-full px-2 py-2 text-center text-[11px] font-semibold text-ink-soft transition-all hover:bg-white/70 hover:text-ink sm:text-sm"
-          >
-            <span className="truncate">Farms</span>
-          </Link>
         </div>
 
         {activeView === 'diagnose' && (

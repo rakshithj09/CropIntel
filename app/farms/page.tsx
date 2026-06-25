@@ -73,18 +73,22 @@ export default function FarmsPage() {
           </Link>
 
           <div className="hidden items-center gap-8 md:flex">
-            <Link href="/diagnosis" className="cropintel-menu-link text-sm font-medium text-ink-soft transition-colors hover:text-ink">
-              Diagnosis
-            </Link>
-            <Link href="/saved-checks" className="cropintel-menu-link text-sm font-medium text-ink-soft transition-colors hover:text-ink">
-              Saved checks
-            </Link>
-            <Link href="/local-risk" className="cropintel-menu-link text-sm font-medium text-ink-soft transition-colors hover:text-ink">
-              Local risk
-            </Link>
-            <Link href="/farms" className="cropintel-menu-link text-sm font-medium text-ink">
-              Farms
-            </Link>
+            {[
+              { label: 'Diagnosis', href: '/diagnosis', active: false },
+              { label: 'Saved checks', href: '/saved-checks', active: false },
+              { label: 'Local risk', href: '/local-risk', active: false },
+              { label: 'Farms', href: '/farms', active: true },
+            ].map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`cropintel-menu-link text-sm font-medium transition-colors ${
+                  item.active ? 'text-ink' : 'text-ink-soft hover:text-ink'
+                }`}
+              >
+                {item.label}
+              </Link>
+            ))}
           </div>
 
           <button type="button" onClick={handleSignOut} className="btn-secondary px-4 py-2 text-sm">
@@ -115,8 +119,7 @@ export default function FarmsPage() {
       <div className="mx-auto max-w-5xl">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="eyebrow">Farm management</p>
-            <h1 className="mt-4 text-3xl font-extrabold text-primary-900">Your farms</h1>
+            <h1 className="text-3xl font-extrabold text-primary-900">Your farms</h1>
           </div>
           <div className="flex gap-2">
             <Link href="/onboarding" className="btn-primary">
