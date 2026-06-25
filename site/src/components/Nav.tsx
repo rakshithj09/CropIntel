@@ -43,7 +43,7 @@ export default function Nav() {
             href={APP_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn-primary flex h-10 items-center whitespace-nowrap rounded-full px-[18px] text-[13px] font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_22px_rgba(22,35,28,0.22)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+            className="btn-primary flex h-10 items-center whitespace-nowrap rounded-full px-[18px] text-[13px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
           >
             Try the scanner
           </a>
