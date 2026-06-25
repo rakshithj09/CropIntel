@@ -39,6 +39,43 @@ const USOutbreakMap = dynamic(() => import('@/components/USOutbreakMap'), {
 
 type MainView = 'diagnose' | 'history' | 'outbreaks'
 
+function fileToHistoryImageUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const source = typeof reader.result === 'string' ? reader.result : ''
+      if (!source) {
+        reject(new Error('Could not read the selected image.'))
+        return
+      }
+
+      const image = new window.Image()
+      image.onload = () => {
+        const maxSize = 640
+        const scale = Math.min(1, maxSize / Math.max(image.width, image.height))
+        const width = Math.max(1, Math.round(image.width * scale))
+        const height = Math.max(1, Math.round(image.height * scale))
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+
+        const context = canvas.getContext('2d')
+        if (!context) {
+          resolve(source)
+          return
+        }
+
+        context.drawImage(image, 0, 0, width, height)
+        resolve(canvas.toDataURL('image/jpeg', 0.82))
+      }
+      image.onerror = () => resolve(source)
+      image.src = source
+    }
+    reader.onerror = () => reject(new Error('Could not read the selected image.'))
+    reader.readAsDataURL(file)
+  })
+}
+
 export default function CropIntelApp({ initialView = 'diagnose' }: { initialView?: MainView }) {
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
@@ -348,11 +385,15 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
     setImageUrl(null)
   }
 
-  const handleImageSelect = (file: File | null) => {
+  const handleImageSelect = async (file: File | null) => {
     setSelectedImage(file)
     if (file) {
-      const url = URL.createObjectURL(file)
-      setImageUrl(url)
+      setImageUrl(null)
+      try {
+        setImageUrl(await fileToHistoryImageUrl(file))
+      } catch (err: any) {
+        setError(err.message || 'Could not read the selected image.')
+      }
     } else {
       setImageUrl(null)
     }

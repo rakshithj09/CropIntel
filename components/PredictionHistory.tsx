@@ -144,13 +144,17 @@ export default function PredictionHistory({ onSelectHistory }: PredictionHistory
                   aria-expanded={isExpanded}
                 >
                   <div className="relative shrink-0">
+                    <div className="flex h-20 w-20 items-center justify-center rounded-xl border border-field-soil/15 bg-field-cream text-[10px] font-bold uppercase tracking-wide text-field-soil shadow-sm">
+                      Image unavailable
+                    </div>
                     <img
                       src={record.imageUrl}
                       alt="Saved field check"
-                      className="h-20 w-20 rounded-xl border border-field-soil/15 object-cover shadow-sm"
+                      className="absolute inset-0 h-20 w-20 rounded-xl border border-field-soil/15 bg-white object-cover shadow-sm"
                       style={{ display: 'block' }}
-                      onError={() => {
+                      onError={(event) => {
                         console.error('Image failed to load:', record.imageUrl)
+                        event.currentTarget.style.display = 'none'
                       }}
                     />
                     <div className="absolute -right-1 -top-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-primary-700">
