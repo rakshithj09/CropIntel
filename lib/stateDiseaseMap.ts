@@ -108,11 +108,58 @@ export type PredictionPayload = {
   is_healthy: boolean
   meets_threshold: boolean
   all_predictions: Array<{ disease: string; confidence: number }>
+  /** True when the model can't confidently match any disease in our catalog. */
+  not_in_catalog?: boolean
+  /** Farmer-facing explanation shown when not_in_catalog is true. */
+  catalog_message?: string
   /** True when applyRegionalPrior actually adjusted the result for the region. */
   region_adjusted?: boolean
   /** The model's own top label + confidence, before any regional adjustment. */
   model_disease?: string
   model_confidence?: number
+}
+
+function toConfidencePercent(value: number): number {
+  if (value > 0 && value <= 1) return value * 100
+  return value
+}
+
+export function normalizePredictionPayload<T extends PredictionPayload>(raw: T): T {
+  const predictionsAsPercent = raw.all_predictions.map((pred) => ({
+    disease: pred.disease,
+    confidence: Math.max(0, toConfidencePercent(pred.confidence)),
+  }))
+  const predictionTotal = predictionsAsPercent.reduce((sum, pred) => sum + pred.confidence, 0)
+  const all_predictions = predictionsAsPercent
+    .map((pred) => ({
+      disease: pred.disease,
+      confidence: predictionTotal > 0 ? (pred.confidence / predictionTotal) * 100 : pred.confidence,
+    }))
+    .sort((a, b) => b.confidence - a.confidence)
+
+  if (all_predictions.length === 0) {
+    const confidence = toConfidencePercent(raw.confidence)
+    return {
+      ...raw,
+      confidence,
+      meets_threshold: confidence >= CONFIDENCE_PCT_THRESHOLD,
+    }
+  }
+
+  const top = all_predictions[0]
+  const topConfidence = Math.min(100, Math.max(0, top.confidence))
+  const meetsThreshold = topConfidence >= CONFIDENCE_PCT_THRESHOLD
+
+  return {
+    ...raw,
+    disease: top.disease,
+    confidence: topConfidence,
+    is_healthy: norm(top.disease) === 'healthy',
+    meets_threshold: meetsThreshold,
+    not_in_catalog: meetsThreshold ? false : raw.not_in_catalog,
+    catalog_message: meetsThreshold ? '' : raw.catalog_message,
+    all_predictions,
+  }
 }
 
 /**
@@ -148,6 +195,7 @@ export function applyRegionalPrior(
   crop: string,
   stateCode: string
 ): PredictionPayload {
+  raw = normalizePredictionPayload(raw)
   const allowed = getRelevantDiseasesForCropState(crop, stateCode)
   const preds = raw.all_predictions
   if (!allowed || !preds || preds.length === 0) return raw
@@ -179,7 +227,7 @@ export function applyRegionalPrior(
   const top = finalPreds[0]
   const origTop = [...orig].sort((a, b) => b.pct - a.pct)[0]
 
-  return {
+  return normalizePredictionPayload({
     ...raw,
     disease: top.disease,
     confidence: top.confidence,
@@ -189,5 +237,5 @@ export function applyRegionalPrior(
     region_adjusted: true,
     model_disease: origTop.disease,
     model_confidence: origTop.pct,
-  }
+  })
 }

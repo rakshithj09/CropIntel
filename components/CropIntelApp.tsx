@@ -21,6 +21,7 @@ import type { OutbreakReport } from '@/lib/outbreakReport'
 import {
   applyRegionalPrior,
   getRelevantDiseasesForCropState,
+  normalizePredictionPayload,
   type PredictionPayload,
 } from '@/lib/stateDiseaseMap'
 import { subscribeToAuth, signOutUser } from '@/src/lib/auth'
@@ -357,7 +358,7 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
         all_predictions: data.all_predictions,
       }
       const filtered = applyRegionalFilter(rawPayload)
-      const merged = { ...data, ...filtered }
+      const merged = normalizePredictionPayload({ ...data, ...filtered })
       setPrediction(merged)
 
       // Save to history
