@@ -156,7 +156,7 @@ export default function FarmsPage() {
                   </div>
                   <div className="rounded-xl bg-white/70 p-3">
                     <p className="text-xs font-bold uppercase tracking-wide text-field-soil">State</p>
-                    <p className="mt-1 font-bold text-primary-900">{farm.stateCode}</p>
+                    <p className="mt-1 text-lg font-bold text-primary-900">{farm.stateCode}</p>
                   </div>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
