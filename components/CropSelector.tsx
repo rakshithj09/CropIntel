@@ -1,7 +1,5 @@
 'use client'
 
-import { Leaf } from 'lucide-react'
-
 interface CropSelectorProps {
   crops: string[]
   selectedCrop: string
@@ -15,13 +13,7 @@ export default function CropSelector({
 }: CropSelectorProps) {
   return (
     <div>
-      <label
-        htmlFor="crop-select"
-        className="mb-2 flex items-center gap-2 text-sm font-extrabold text-primary-950"
-      >
-        <span className="flex h-7 w-7 items-center justify-center rounded-full border border-primary-100 bg-white shadow-sm">
-          <Leaf className="h-4 w-4 text-primary-700" />
-        </span>
+      <label className="mb-2 block text-sm font-bold text-primary-900" htmlFor="crop-select">
         Crop in the photo
       </label>
       <select
