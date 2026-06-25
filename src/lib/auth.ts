@@ -2,7 +2,6 @@
 
 import {
   createUserWithEmailAndPassword,
-  fetchSignInMethodsForEmail,
   onAuthStateChanged,
   sendEmailVerification,
   sendPasswordResetEmail,
@@ -39,10 +38,6 @@ export async function signInWithEmail(email: string, password: string) {
   const credential = await signInWithEmailAndPassword(auth, email, password)
   await syncUserProfile(credential.user)
   return credential.user
-}
-
-export function getEmailSignInMethods(email: string) {
-  return fetchSignInMethodsForEmail(getFirebaseAuth(), email)
 }
 
 export async function syncUserProfile(user: User) {

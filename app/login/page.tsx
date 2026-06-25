@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { FormEvent, useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import AuthShell from '@/components/auth/AuthShell'
-import { getEmailSignInMethods, resetPassword, signInWithEmail, subscribeToAuth } from '@/src/lib/auth'
+import { resetPassword, signInWithEmail, subscribeToAuth } from '@/src/lib/auth'
 import { getUserFarms } from '@/src/lib/farms'
 
 function getAuthErrorCode(error: unknown) {
@@ -41,19 +41,18 @@ export default function LoginPage() {
 
     try {
       const trimmedEmail = email.trim()
-      const signInMethods = await getEmailSignInMethods(trimmedEmail)
-      if (signInMethods.length === 0) {
-        router.replace(`/signup?email=${encodeURIComponent(trimmedEmail)}`)
-        return
-      }
-
       const user = await signInWithEmail(trimmedEmail, password)
       const farms = await getUserFarms(user.uid)
       router.replace(farms.length > 0 ? '/' : '/onboarding')
     } catch (err: any) {
       const code = getAuthErrorCode(err)
+      if (code === 'auth/user-not-found') {
+        router.replace(`/signup?email=${encodeURIComponent(email.trim())}`)
+        return
+      }
+
       if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
-        setError('That password is incorrect. Enter a new password or reset it below.')
+        setError('That password is incorrect. Enter a different password or reset it below.')
         return
       }
 
@@ -74,15 +73,14 @@ export default function LoginPage() {
     setMessage(null)
     try {
       const trimmedEmail = email.trim()
-      const signInMethods = await getEmailSignInMethods(trimmedEmail)
-      if (signInMethods.length === 0) {
-        router.replace(`/signup?email=${encodeURIComponent(trimmedEmail)}`)
-        return
-      }
-
       await resetPassword(trimmedEmail)
       setMessage(`Password reset email sent to ${trimmedEmail}.`)
     } catch (err: any) {
+      if (getAuthErrorCode(err) === 'auth/user-not-found') {
+        router.replace(`/signup?email=${encodeURIComponent(email.trim())}`)
+        return
+      }
+
       setError(err.message || 'Could not send password reset email.')
     } finally {
       setLoading(false)
@@ -141,8 +139,8 @@ export default function LoginPage() {
           />
         </div>
 
-        {error && <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">{error}</p>}
-        {message && <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">{message}</p>}
+        {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">{error}</p>}
+        {message && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">{message}</p>}
 
         <button type="submit" disabled={loading} className="btn-primary w-full border border-ink/20">
           {loading && <Loader2 className="h-4 w-4 animate-spin" />}
