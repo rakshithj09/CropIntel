@@ -358,7 +358,7 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
           typeof merged.confidence === 'number' && merged.confidence <= 1
             ? merged.confidence * 100
             : merged.confidence
-        savePredictionToHistory(selectedCrop, merged.disease, confidencePercent, imageUrl, merged)
+        savePredictionToHistory(selectedCrop, merged.disease, confidencePercent, imageUrl, selectedFarm, merged)
       }
 
       await saveDiagnosis({

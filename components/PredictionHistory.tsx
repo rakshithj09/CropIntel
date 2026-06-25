@@ -10,6 +10,8 @@ interface PredictionRecord {
   id: string
   timestamp: string
   crop: string
+  farmName?: string
+  farmState?: string
   disease: string
   confidence: number
   imageUrl: string
@@ -128,6 +130,9 @@ export default function PredictionHistory({ onSelectHistory }: PredictionHistory
             const otherPredictions = record.allPredictions?.filter(
               (pred) => pred.disease.toLowerCase() !== record.disease.toLowerCase()
             )
+            const farmLabel = record.farmName
+              ? `${record.farmName}${record.farmState ? ` (${record.farmState})` : ''}`
+              : record.crop
 
             return (
               <div
@@ -169,8 +174,8 @@ export default function PredictionHistory({ onSelectHistory }: PredictionHistory
                       </span>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-lg bg-field-cream px-3 py-1 text-sm font-semibold capitalize text-field-soil">
-                        {record.crop}
+                      <span className="max-w-full truncate rounded-lg bg-field-cream px-3 py-1 text-sm font-semibold text-field-soil">
+                        {farmLabel}
                       </span>
                       <span className="text-sm font-bold text-primary-700">
                         {record.confidence.toFixed(1)}% match
@@ -253,6 +258,10 @@ export function savePredictionToHistory(
   disease: string,
   confidence: number,
   imageUrl: string,
+  farm?: {
+    name: string
+    stateCode: string
+  } | null,
   prediction?: {
     is_healthy?: boolean
     all_predictions?: Array<{
@@ -269,6 +278,8 @@ export function savePredictionToHistory(
       id: Date.now().toString(),
       timestamp: new Date().toISOString(),
       crop,
+      farmName: farm?.name,
+      farmState: farm?.stateCode,
       disease,
       confidence,
       imageUrl,
