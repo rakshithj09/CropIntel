@@ -8,6 +8,10 @@ import AuthShell from '@/components/auth/AuthShell'
 import { resetPassword, signInWithEmail, subscribeToAuth } from '@/src/lib/auth'
 import { getUserFarms } from '@/src/lib/farms'
 
+function getAuthErrorCode(error: unknown) {
+  return typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : ''
+}
+
 export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
@@ -36,10 +40,22 @@ export default function LoginPage() {
     setMessage(null)
 
     try {
-      const user = await signInWithEmail(email, password)
+      const trimmedEmail = email.trim()
+      const user = await signInWithEmail(trimmedEmail, password)
       const farms = await getUserFarms(user.uid)
       router.replace(farms.length > 0 ? '/' : '/onboarding')
     } catch (err: any) {
+      const code = getAuthErrorCode(err)
+      if (code === 'auth/user-not-found') {
+        router.replace(`/signup?email=${encodeURIComponent(email.trim())}`)
+        return
+      }
+
+      if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+        setError('That password is incorrect. Enter a different password or reset it below.')
+        return
+      }
+
       setError(err.message || 'Could not sign in. Check your email and password.')
     } finally {
       setLoading(false)
@@ -56,9 +72,15 @@ export default function LoginPage() {
     setError(null)
     setMessage(null)
     try {
-      await resetPassword(email.trim())
-      setMessage('Password reset email sent.')
+      const trimmedEmail = email.trim()
+      await resetPassword(trimmedEmail)
+      setMessage(`Password reset email sent to ${trimmedEmail}.`)
     } catch (err: any) {
+      if (getAuthErrorCode(err) === 'auth/user-not-found') {
+        router.replace(`/signup?email=${encodeURIComponent(email.trim())}`)
+        return
+      }
+
       setError(err.message || 'Could not send password reset email.')
     } finally {
       setLoading(false)
@@ -117,21 +139,26 @@ export default function LoginPage() {
           />
         </div>
 
-        {error && <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">{error}</p>}
-        {message && <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">{message}</p>}
+        {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">{error}</p>}
+        {message && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">{message}</p>}
 
         <button type="submit" disabled={loading} className="btn-primary w-full border border-ink/20">
           {loading && <Loader2 className="h-4 w-4 animate-spin" />}
           Sign in
         </button>
-        <button
-          type="button"
-          onClick={handleForgotPassword}
-          disabled={loading}
-          className="btn-secondary w-full border-ink/20 bg-white"
-        >
-          Forgot password
-        </button>
+        <div className="pt-2">
+          <p className="mb-3 text-center text-sm text-field-soil">
+            Need a new password? Send a reset link to your email.
+          </p>
+          <button
+            type="button"
+            onClick={handleForgotPassword}
+            disabled={loading}
+            className="btn-secondary w-full border-ink/20 bg-white"
+          >
+            Reset password
+          </button>
+        </div>
       </form>
     </AuthShell>
   )
