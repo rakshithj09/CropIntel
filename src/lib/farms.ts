@@ -12,7 +12,7 @@ import {
   setDoc,
   where,
 } from 'firebase/firestore'
-import { db } from './firebase'
+import { getFirebaseDb } from './firebase'
 import type { Diagnosis, Farm, FarmMember } from './types'
 
 const JOIN_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -40,6 +40,7 @@ function makeJoinCode() {
 }
 
 async function generateUniqueJoinCode() {
+  const db = getFirebaseDb()
   for (let attempt = 0; attempt < 10; attempt += 1) {
     const joinCode = makeJoinCode()
     const existing = await getDocs(query(collection(db, 'farms'), where('joinCode', '==', joinCode), limit(1)))
@@ -49,6 +50,7 @@ async function generateUniqueJoinCode() {
 }
 
 export async function createFarmForUser(userId: string, input: CreateFarmInput) {
+  const db = getFirebaseDb()
   const joinCode = await generateUniqueJoinCode()
   const farmRef = doc(collection(db, 'farms'))
   const farmPayload = {
@@ -77,6 +79,7 @@ export async function createFarmForUser(userId: string, input: CreateFarmInput) 
 }
 
 export async function joinFarmByCode(userId: string, code: string) {
+  const db = getFirebaseDb()
   const normalized = code.trim().toUpperCase()
   if (!/^[A-Z0-9]{6}$/.test(normalized)) {
     throw new Error('Enter the six-character farm join code.')
@@ -104,6 +107,7 @@ export async function joinFarmByCode(userId: string, code: string) {
 }
 
 export async function getUserFarmMemberships(userId: string) {
+  const db = getFirebaseDb()
   const membershipSnapshot = await getDocs(query(collection(db, 'farmMembers'), where('userId', '==', userId)))
   return membershipSnapshot.docs.map((memberDoc) => ({
     id: memberDoc.id,
@@ -112,6 +116,7 @@ export async function getUserFarmMemberships(userId: string) {
 }
 
 export async function getUserFarms(userId: string) {
+  const db = getFirebaseDb()
   const memberships = await getUserFarmMemberships(userId)
   if (memberships.length === 0) return []
 
@@ -127,6 +132,7 @@ export async function getUserFarms(userId: string) {
 }
 
 export async function saveDiagnosis(input: Omit<Diagnosis, 'id' | 'detectedAt'>) {
+  const db = getFirebaseDb()
   await addDoc(collection(db, 'diagnoses'), {
     userId: input.userId,
     farmId: input.farmId,
