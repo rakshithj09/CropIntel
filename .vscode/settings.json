@@ -1,3 +1,20 @@
 {
-  "css.lint.unknownAtRules": "ignore"
+  "css.lint.unknownAtRules": "ignore",
+  "git.autorefresh": false,
+  "files.watcherExclude": {
+    "**/.next/**": true,
+    "**/node_modules/**": true,
+    "**/site/node_modules/**": true,
+    "**/.venv/**": true,
+    "**/ml/models/**": true,
+    "**/ml/models_pretrained/**": true
+  },
+  "search.exclude": {
+    "**/.next": true,
+    "**/node_modules": true,
+    "**/site/node_modules": true,
+    "**/.venv": true,
+    "**/ml/models": true,
+    "**/ml/models_pretrained": true
+  }
 }
