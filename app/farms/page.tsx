@@ -82,7 +82,7 @@ export default function FarmsPage() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`cropintel-menu-link text-sm font-medium transition-colors ${
+                className={`cropintel-menu-link font-mono text-sm font-medium transition-colors ${
                   item.active ? 'text-ink' : 'text-ink-soft hover:text-ink'
                 }`}
               >
@@ -107,7 +107,7 @@ export default function FarmsPage() {
           <Link
             key={item.href}
             href={item.href}
-            className={`touch-manipulation flex min-h-[40px] items-center justify-center rounded-full px-2 py-2 text-center text-[11px] font-semibold transition-all sm:text-sm ${
+            className={`touch-manipulation font-mono flex min-h-[40px] items-center justify-center rounded-full px-2 py-2 text-center text-[11px] font-semibold transition-all sm:text-sm ${
               item.active ? 'bg-ink text-white shadow-sm' : 'text-ink-soft hover:bg-white/70 hover:text-ink'
             }`}
           >

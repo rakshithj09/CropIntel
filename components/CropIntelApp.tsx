@@ -484,7 +484,7 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
                 <Link
                   key={id}
                   href={href}
-                  className={`cropintel-menu-link text-sm font-medium transition-colors ${
+                  className={`cropintel-menu-link font-mono text-sm font-medium transition-colors ${
                     activeView === id ? 'text-ink' : 'text-ink-soft hover:text-ink'
                   }`}
                 >
@@ -517,7 +517,7 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
             <Link
               key={id}
               href={href}
-              className={`touch-manipulation flex min-h-[40px] items-center justify-center rounded-full px-2 py-2 text-center text-[11px] font-semibold transition-all sm:text-sm ${
+              className={`touch-manipulation font-mono flex min-h-[40px] items-center justify-center rounded-full px-2 py-2 text-center text-[11px] font-semibold transition-all sm:text-sm ${
                 activeView === id
                   ? 'bg-ink text-white shadow-sm'
                   : 'text-ink-soft hover:bg-white/70 hover:text-ink'
