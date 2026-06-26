@@ -88,9 +88,15 @@ _log_lock = threading.Lock()
 #  - Otherwise block only when another crop is itself confident AND beats the
 #    selected crop by a clear margin — so genuinely close calls stay accepted.
 # All confidences below are fractions in [0, 1].
+# Defaults tuned from a 57-image cross-crop sweep against the live models
+# (scripts/cross_crop_sweep.py): MARGIN 0.12 + OTHER_MIN 0.80 minimized
+# false-rejects (valid leaves wrongly blocked: 5.6% -> 2.8%) with no loss of
+# catch rate (~78%). The residual false-rejects/accepts trace to the disease
+# models being overconfident on out-of-crop leaves (esp. the rice model); the
+# durable fix is a dedicated crop-ID classifier — see docs/CROP_ID_GATE.md.
 CROP_STRONG_CONF = float(os.environ.get("CROPINTEL_CROP_STRONG_CONF", "0.85"))
-CROP_MISMATCH_MARGIN = float(os.environ.get("CROPINTEL_CROP_MISMATCH_MARGIN", "0.15"))
-CROP_OTHER_MIN_CONF = float(os.environ.get("CROPINTEL_CROP_OTHER_MIN_CONF", "0.75"))
+CROP_MISMATCH_MARGIN = float(os.environ.get("CROPINTEL_CROP_MISMATCH_MARGIN", "0.12"))
+CROP_OTHER_MIN_CONF = float(os.environ.get("CROPINTEL_CROP_OTHER_MIN_CONF", "0.80"))
 
 
 def _cross_crop_check(pil_image, selected_crop: str, selected_conf: float,
