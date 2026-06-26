@@ -3,6 +3,7 @@ import { Bricolage_Grotesque, Space_Grotesk } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '@/components/ui/theme-provider'
 import CursorField from '@/components/CursorField'
+import SiteFooter from '@/components/SiteFooter'
 
 const bricolage = Bricolage_Grotesque({
   subsets: ['latin'],
@@ -55,6 +56,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          <SiteFooter />
         </ThemeProvider>
       </body>
     </html>

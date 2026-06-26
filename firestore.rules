@@ -1,0 +1,158 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function isString(value, min, max) {
+      return value is string && value.size() >= min && value.size() <= max;
+    }
+
+    function validCrop(crop) {
+      return crop in ['corn', 'rice', 'soybean', 'wheat', 'tomato'];
+    }
+
+    function validCropList(crops) {
+      return crops is list &&
+        crops.size() >= 1 &&
+        crops.size() <= 5 &&
+        validCrop(crops[0]) &&
+        (crops.size() < 2 || validCrop(crops[1])) &&
+        (crops.size() < 3 || validCrop(crops[2])) &&
+        (crops.size() < 4 || validCrop(crops[3])) &&
+        (crops.size() < 5 || validCrop(crops[4]));
+    }
+
+    function validStateCode(stateCode) {
+      return stateCode in [
+        'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+        'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+        'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+        'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+        'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
+      ];
+    }
+
+    function validLatLng(lat, lng) {
+      return (lat == null || (lat is number && lat >= -90 && lat <= 90)) &&
+        (lng == null || (lng is number && lng >= -180 && lng <= 180));
+    }
+
+    function validFarmCreate() {
+      return request.resource.data.keys().hasOnly([
+        'name', 'ownerId', 'joinCode', 'address', 'lat', 'lng', 'stateCode',
+        'crops', 'acreage', 'verificationStatus', 'createdAt'
+      ]) &&
+      request.resource.data.ownerId == request.auth.uid &&
+      isString(request.resource.data.name, 1, 120) &&
+      isString(request.resource.data.address, 1, 240) &&
+      request.resource.data.joinCode.matches('^[A-Z2-9]{6}$') &&
+      validStateCode(request.resource.data.stateCode) &&
+      validCropList(request.resource.data.crops) &&
+      validLatLng(request.resource.data.lat, request.resource.data.lng) &&
+      (request.resource.data.acreage == null ||
+        (request.resource.data.acreage is number &&
+          request.resource.data.acreage >= 0 &&
+          request.resource.data.acreage <= 1000000)) &&
+      request.resource.data.verificationStatus == 'unverified' &&
+      request.resource.data.createdAt == request.time;
+    }
+
+    function memberId(farmId, userId) {
+      return farmId + '_' + userId;
+    }
+
+    function isFarmMember(farmId) {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/farmMembers/$(memberId(farmId, request.auth.uid)));
+    }
+
+    function joinCodeAllowsMembership(data) {
+      return data.joinCodeUsed is string &&
+        exists(/databases/$(database)/documents/farmJoinCodes/$(data.joinCodeUsed)) &&
+        get(/databases/$(database)/documents/farmJoinCodes/$(data.joinCodeUsed)).data.farmId == data.farmId;
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) &&
+        request.resource.data.keys().hasOnly(['name', 'email', 'emailVerified', 'createdAt']) &&
+        isString(request.resource.data.name, 1, 100) &&
+        isString(request.resource.data.email, 3, 320) &&
+        request.resource.data.emailVerified is bool &&
+        request.resource.data.createdAt == request.time;
+      allow update: if isOwner(userId) &&
+        request.resource.data.diff(resource.data).changedKeys().hasOnly(['name', 'email', 'emailVerified']) &&
+        isString(request.resource.data.name, 1, 100) &&
+        isString(request.resource.data.email, 3, 320) &&
+        request.resource.data.emailVerified is bool;
+      allow delete: if false;
+    }
+
+    match /farms/{farmId} {
+      allow read: if isFarmMember(farmId);
+      allow create: if signedIn() && validFarmCreate();
+      allow update, delete: if false;
+    }
+
+    match /farmJoinCodes/{joinCode} {
+      allow get: if signedIn() && joinCode.matches('^[A-Z2-9]{6}$');
+      allow list: if false;
+      allow create: if signedIn() &&
+        joinCode.matches('^[A-Z2-9]{6}$') &&
+        request.resource.data.keys().hasOnly(['farmId', 'createdBy', 'createdAt']) &&
+        request.resource.data.createdBy == request.auth.uid &&
+        request.resource.data.createdAt == request.time &&
+        getAfter(/databases/$(database)/documents/farms/$(request.resource.data.farmId)).data.ownerId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /farmMembers/{memberDocId} {
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if signedIn() &&
+        request.resource.data.keys().hasOnly(['farmId', 'userId', 'role', 'joinedAt', 'joinCodeUsed']) &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.joinedAt == request.time &&
+        (
+          (
+            request.resource.data.role == 'owner' &&
+            !('joinCodeUsed' in request.resource.data) &&
+            getAfter(/databases/$(database)/documents/farms/$(request.resource.data.farmId)).data.ownerId == request.auth.uid
+          ) ||
+          (
+            request.resource.data.role == 'member' &&
+            joinCodeAllowsMembership(request.resource.data)
+          )
+        );
+      allow update: if signedIn() &&
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.diff(resource.data).changedKeys().hasOnly(['joinedAt']);
+      allow delete: if signedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    match /diagnoses/{diagnosisId} {
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if signedIn() &&
+        request.resource.data.keys().hasOnly(['userId', 'farmId', 'crop', 'disease', 'confidence', 'detectedAt']) &&
+        request.resource.data.userId == request.auth.uid &&
+        isFarmMember(request.resource.data.farmId) &&
+        validCrop(request.resource.data.crop) &&
+        isString(request.resource.data.disease, 1, 200) &&
+        request.resource.data.confidence is number &&
+        request.resource.data.confidence >= 0 &&
+        request.resource.data.confidence <= 100 &&
+        request.resource.data.detectedAt == request.time;
+      allow update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

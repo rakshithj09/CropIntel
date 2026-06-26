@@ -5,6 +5,9 @@
 import { useState, useRef } from 'react'
 import { Image as ImageIcon, Upload, X } from 'lucide-react'
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+
 interface ImageUploadProps {
   selectedImage: File | null
   onImageSelect: (file: File | null) => void
@@ -12,6 +15,7 @@ interface ImageUploadProps {
   /** Override default upload prompt (e.g. "Past photo") */
   title?: string
   hint?: string
+  onError?: (message: string) => void
 }
 
 export default function ImageUpload({
@@ -20,6 +24,7 @@ export default function ImageUpload({
   onClear,
   title = 'Add a crop photo',
   hint = 'Use a close, well-lit photo of the leaf or damaged area.',
+  onError,
 }: ImageUploadProps) {
   const [dragActive, setDragActive] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -52,9 +57,17 @@ export default function ImageUpload({
   }
 
   const handleFile = (file: File) => {
-    if (file.type.startsWith('image/')) {
-      onImageSelect(file)
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      onError?.('Upload a JPEG, PNG, or WebP crop photo.')
+      return
     }
+
+    if (file.size <= 0 || file.size > MAX_FILE_SIZE) {
+      onError?.('Upload an image smaller than 10MB.')
+      return
+    }
+
+    onImageSelect(file)
   }
 
   const imageUrl = selectedImage ? URL.createObjectURL(selectedImage) : null
@@ -99,14 +112,14 @@ export default function ImageUpload({
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp"
             onChange={handleFileInput}
             className="hidden"
           />
           <input
             ref={cameraInputRef}
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp"
             capture="environment"
             onChange={handleFileInput}
             className="hidden"

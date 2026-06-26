@@ -11,6 +11,7 @@ import {
   type User,
 } from 'firebase/auth'
 import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore'
+import { displayNameSchema } from '@/lib/security/validation'
 import { getFirebaseAuth, getFirebaseDb } from './firebase'
 import type { UserProfile } from './types'
 
@@ -31,12 +32,14 @@ export function subscribeToAuth(
 export async function signUpWithEmail(name: string, email: string, password: string) {
   const auth = getFirebaseAuth()
   const db = getFirebaseDb()
-  const credential = await createUserWithEmailAndPassword(auth, email, password)
+  const displayName = displayNameSchema.parse(name)
+  const normalizedEmail = email.trim().toLowerCase()
+  const credential = await createUserWithEmailAndPassword(auth, normalizedEmail, password)
   await Promise.all([
-    updateProfile(credential.user, { displayName: name }),
+    updateProfile(credential.user, { displayName }),
     setDoc(doc(db, 'users', credential.user.uid), {
-      name,
-      email: credential.user.email ?? email,
+      name: displayName,
+      email: credential.user.email ?? normalizedEmail,
       emailVerified: credential.user.emailVerified,
       createdAt: serverTimestamp(),
     }),

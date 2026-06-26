@@ -337,9 +337,13 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
       const formData = new FormData()
       formData.append('image', selectedImage)
       formData.append('crop', selectedCrop)
+      const idToken = await user.getIdToken()
 
       const response = await fetch('/api/predict', {
         method: 'POST',
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
         body: formData,
       })
 
@@ -587,7 +591,12 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
 
                   {photoMode === 'single' && (
                     <>
-                      <ImageUpload selectedImage={selectedImage} onImageSelect={handleImageSelect} onClear={handleClear} />
+                      <ImageUpload
+                        selectedImage={selectedImage}
+                        onImageSelect={handleImageSelect}
+                        onClear={handleClear}
+                        onError={setError}
+                      />
                       <div className="flex items-end">
                         <button
                           type="button"

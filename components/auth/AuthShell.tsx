@@ -33,6 +33,11 @@ export default function AuthShell({ title, subtitle, children, footer }: AuthShe
           </div>
           {children}
           {footer && <div className="mt-6 text-center text-sm text-field-soil">{footer}</div>}
+          <div className="mt-4 text-center text-xs leading-5 text-field-soil">
+            <Link className="font-bold text-primary-800 hover:text-primary-950" href="/privacy">
+              Privacy Policy
+            </Link>
+          </div>
         </section>
       </div>
     </main>

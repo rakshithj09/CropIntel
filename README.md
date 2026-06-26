@@ -35,6 +35,7 @@ CropIntel provides:
   - app/api/predict/* or app/api/predict/route.ts — Next.js API route which forwards to the inference service.
 - src/lib/firebase.ts — Firebase client initialization.
 - src/lib/auth.ts, src/lib/farms.ts, src/lib/types.ts — Auth, Firestore farm/diagnosis actions, and shared TypeScript types.
+- firestore.rules, storage.rules, firebase.json — Firebase access policy for user, farm, diagnosis, join-code, and storage data.
 - ml/
   - ml/serve/inference_app.py — FastAPI inference server (loads TFLite models).
   - ml/inference/ — inference helpers and predictor code.
@@ -90,6 +91,10 @@ npm run dev    # defaults: next dev -H 0.0.0.0 -p 3050
 - Enable Authentication -> Sign-in method -> Email/Password.
 - Create a Firestore database.
 - Add a Web app in Firebase project settings and copy the client config values into `.env.local`.
+- Deploy Firestore and Storage rules from this repo before using real user data:
+  ```bash
+  firebase deploy --only firestore:rules,storage
+  ```
 - Firestore collections are created by app actions automatically; do not create them manually.
 
 Required Firebase environment values:
@@ -106,10 +111,12 @@ Firestore collections written by the app:
 - `users/{userId}` for user profile records.
 - `farms/{farmId}` for farm records and generated join codes.
 - `farmMembers/{farmId_userId}` for owner/member access.
+- `farmJoinCodes/{joinCode}` for authenticated farm join-code lookup.
 - `diagnoses/{diagnosisId}` for completed disease detections.
 
 ## API contract (what the frontend expects)
 - POST /api/predict (Next.js API route)
+  - Requires `Authorization: Bearer <Firebase ID token>`
   - Form data: image file under `image`, `crop` string
   - Returns (JSON):
     {
@@ -160,6 +167,10 @@ Firestore collections written by the app:
 - NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID — Firebase sender ID from the web app config.
 - NEXT_PUBLIC_FIREBASE_APP_ID — Firebase web app ID.
 - NEXT_PUBLIC_GOOGLE_MAPS_API_KEY — optional, used by outbreak map (client-side).
+- INFERENCE_URL — server-side URL for the Python inference service. Prefer localhost or a private service URL.
+- RATE_LIMIT_PREDICT_IP_MAX / RATE_LIMIT_PREDICT_IP_WINDOW_MS — IP rate-limit settings for prediction requests.
+- RATE_LIMIT_PREDICT_USER_MAX / RATE_LIMIT_PREDICT_USER_WINDOW_MS — authenticated user rate-limit settings for prediction requests.
+- CROPINTEL_MAX_UPLOAD_BYTES — maximum upload size accepted by the inference service.
 - CROPINTEL_MODELS_URL — override default model bundle URL.
 - CROPINTEL_ADMIN_TOKEN — admin token to guard /admin/reload (if enabled).
 - NEXT_DEV_ALLOWED_ORIGINS — helper for phone-on-same-wifi dev UX.
@@ -188,6 +199,8 @@ Firestore collections written by the app:
 ## Security notes
 - Keep private API tokens out of the repo. Use environment variables or a secrets manager for production.
 - Restrict Google Maps API key by HTTP referrer when using it in the browser.
+- Do not deploy the inference service as a directly public unauthenticated endpoint. The Next.js route requires Firebase auth and rate limits; public inference hosts need their own protection or private networking.
+- Deploy `firestore.rules` and `storage.rules` before accepting real user data.
 - The repository includes a simple admin token mechanism; rotate CROPINTEL_ADMIN_TOKEN if used.
 
 ## Troubleshooting (quick)
