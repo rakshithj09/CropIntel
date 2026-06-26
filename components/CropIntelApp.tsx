@@ -15,7 +15,7 @@ import ExportResults from '@/components/ExportResults'
 import Diagnosis from '@/components/Diagnosis'
 import NotificationSystem from '@/components/NotificationSystem'
 import HealthComparisonPanel from '@/components/HealthComparisonPanel'
-import { savePredictionToHistory } from '@/components/PredictionHistory'
+import { savePredictionToHistory, type PredictionRecord } from '@/components/PredictionHistory'
 import type { OutbreakReport } from '@/lib/outbreakReport'
 import {
   applyRegionalPrior,
@@ -86,7 +86,7 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
   const [selectedImage, setSelectedImage] = useState<File | null>(null)
   const [selectedCrop, setSelectedCrop] = useState('')
   const [photoMode, setPhotoMode] = useState<'single' | 'compare'>('single')
-  const [prediction, setPrediction] = useState<any>(null)
+  const [prediction, setPrediction] = useState<PredictionPayload | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [startupError, setStartupError] = useState<string | null>(null)
@@ -270,8 +270,8 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
           }
           setFarms(userFarms)
           setSelectedFarmId((current) => (userFarms.some((farm) => farm.id === current) ? current : ''))
-        } catch (err: any) {
-          setStartupError(err.message || 'Could not load your farm data.')
+        } catch (err: unknown) {
+          setStartupError(err instanceof Error ? err.message : 'Could not load your farm data.')
         } finally {
           setFarmsLoading(false)
         }
@@ -383,8 +383,8 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
             ? merged.confidence * 100
             : merged.confidence,
       })
-    } catch (err: any) {
-      setError(err.message || 'An error occurred')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setLoading(false)
     }
@@ -403,15 +403,15 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
       setImageUrl(null)
       try {
         setImageUrl(await fileToHistoryImageUrl(file))
-      } catch (err: any) {
-        setError(err.message || 'Could not read the selected image.')
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Could not read the selected image.')
       }
     } else {
       setImageUrl(null)
     }
   }
 
-  const handleHistorySelect = (record: any) => {
+  const handleHistorySelect = (record: PredictionRecord) => {
     // Load image from history
     setImageUrl(record.imageUrl)
     setSelectedCrop(record.crop)

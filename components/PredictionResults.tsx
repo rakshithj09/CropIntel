@@ -23,20 +23,39 @@ interface PredictionResultsProps {
   regionNote?: string
 }
 
-/** Model may send 0–1 or 0–100; UI always shows percent to one decimal. */
-function toConfidencePercent(value: number): number {
-  if (value > 0 && value <= 1) return value * 100
-  return value
-}
-
 export default function PredictionResults({
   prediction,
   regionNote,
 }: PredictionResultsProps) {
-  const otherPredictions = prediction.all_predictions
-    .filter((pred) => pred.disease.toLowerCase() !== prediction.disease.toLowerCase())
-    .sort((a, b) => toConfidencePercent(b.confidence) - toConfidencePercent(a.confidence))
+  // Decide the scale ONCE for the whole set. The model may send 0–1 (fractions)
+  // or 0–100 (percentages). Scaling per-value is wrong: a genuine sub-1%
+  // probability (e.g. 0.94 = 0.94%) would be mistaken for a fraction and
+  // blown up to 94%. So: if the largest value is ≤ 1 the data is fractions
+  // (×100); otherwise it's already percentages (×1).
+  const allConfidences = [
+    prediction.confidence,
+    ...prediction.all_predictions.map((p) => p.confidence),
+  ].filter((n) => typeof n === 'number' && !Number.isNaN(n))
+  const maxConfidence = allConfidences.length ? Math.max(...allConfidences) : 0
+  const confidenceScale = maxConfidence <= 1 ? 100 : 1
+  const toPct = (value: number) =>
+    Math.min(100, Math.max(0, value * confidenceScale))
 
+  // Always render the matches highest-first, and derive the headline from the
+  // actual #1 entry. The backend SHOULD send `disease`/`confidence` equal to the
+  // top of `all_predictions`, but older/alternate inference builds have shipped a
+  // headline that disagreed with their own ranked list (e.g. naming a 45% class
+  // while a 76% class sat on top). Trusting the sorted list keeps the headline
+  // and the first bar in lockstep no matter what the service returns.
+  const sortedPredictions = [...prediction.all_predictions]
+    .filter((p) => p && typeof p.confidence === 'number' && !Number.isNaN(p.confidence))
+    .sort((a, b) => b.confidence - a.confidence)
+  const topPrediction = sortedPredictions[0]
+  const headlineDisease = topPrediction?.disease ?? prediction.disease
+  const headlineConfidence = topPrediction?.confidence ?? prediction.confidence
+  const otherPredictions = sortedPredictions.filter(
+    (pred) => pred.disease.toLowerCase() !== headlineDisease.toLowerCase()
+  )
   const getStatusColor = () => {
     if (prediction.not_in_catalog) {
       return 'bg-amber-50 text-amber-800 border-amber-200'
@@ -98,7 +117,7 @@ export default function PredictionResults({
               Likely field issue
             </h3>
             <p className="mt-1 text-2xl font-bold text-primary-900">
-              {prediction.disease}
+              {headlineDisease}
             </p>
           </div>
           <div className="sm:text-right">
@@ -106,7 +125,7 @@ export default function PredictionResults({
               Match strength
             </h3>
             <p className="mt-1 text-2xl font-bold tabular-nums text-primary-800">
-              {Math.min(100, Math.max(0, toConfidencePercent(prediction.confidence))).toFixed(1)}%
+              {toPct(headlineConfidence).toFixed(1)}%
             </p>
           </div>
         </div>
@@ -155,8 +174,7 @@ export default function PredictionResults({
           </h3>
           <div className="space-y-3">
             {otherPredictions.map((pred, index) => {
-              const pctRaw = toConfidencePercent(pred.confidence)
-              const pctClamped = Math.min(100, Math.max(0, pctRaw))
+              const pctClamped = toPct(pred.confidence)
               const pctOneDecimal = pctClamped.toFixed(1)
               return (
                 <div
