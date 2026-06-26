@@ -159,7 +159,7 @@ export default function HealthComparisonPanel({ crop, applyRegionalFilter }: Pro
         type="button"
         onClick={handleCompare}
         disabled={!pastFile || !currentFile || loading}
-        className="btn-primary mt-6 w-full px-6 md:w-auto"
+        className="btn-primary mt-6 w-full px-6"
       >
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowLeftRight className="w-4 h-4" />}
         {loading ? 'Checking both photos...' : 'Compare field change'}

@@ -12,7 +12,6 @@ import FarmSelector from '@/components/FarmSelector'
 import PredictionResults from '@/components/PredictionResults'
 import PredictionHistory from '@/components/PredictionHistory'
 import ExportResults from '@/components/ExportResults'
-import TipsAndGuidelines from '@/components/TipsAndGuidelines'
 import Diagnosis from '@/components/Diagnosis'
 import NotificationSystem from '@/components/NotificationSystem'
 import HealthComparisonPanel from '@/components/HealthComparisonPanel'
@@ -538,8 +537,8 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
         </div>
 
         {activeView === 'diagnose' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
+          <div className="grid grid-cols-1 gap-6">
+            <div className="space-y-6">
               <section className="surface rounded-2xl p-4 sm:p-6">
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div>
@@ -594,7 +593,7 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
                           type="button"
                           onClick={handlePredict}
                           disabled={!selectedImage || !hasSelectedCrop || loading}
-                          className="btn-primary w-full md:max-w-md"
+                          className="btn-primary w-full"
                         >
                           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
                           {loading ? 'Checking photo...' : 'Check crop health'}
@@ -635,21 +634,6 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
               </section>
             </div>
 
-            <aside className="lg:col-span-1 space-y-6">
-              <TipsAndGuidelines />
-
-              <div className="surface rounded-2xl p-4 sm:p-6">
-                <h3 className="text-base font-bold text-primary-900">Watch my area</h3>
-                <p className="mt-1 text-sm leading-6 text-field-soil">
-                  Farm location from Firestore powers crop issue alerts within 250 miles.
-                </p>
-                <div className="mt-4 sm:hidden space-y-3">
-                  <Link href="/farms" className="btn-secondary w-full">
-                    Manage farms
-                  </Link>
-                </div>
-              </div>
-            </aside>
           </div>
         )}
 
