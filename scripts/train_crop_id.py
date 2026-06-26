@@ -35,9 +35,10 @@ EXTS = (".jpg", ".jpeg", ".png", ".JPG", ".JPEG", ".PNG")
 def balanced_file_list(per_crop: int, seed: int):
     files, labels = [], []
     for idx, crop in enumerate(CROP_NAMES):
-        fs = []
-        for ext in ("*" + e for e in (".jpg", ".jpeg", ".png")):
-            fs += glob.glob(str(ROOT / "ml" / "data" / crop / "**" / ext), recursive=True)
+        # Case-insensitive: many images use .JPG/.JPEG — globbing only lowercase
+        # silently dropped thousands (e.g. ~5k corn images).
+        fs = [p for p in glob.glob(str(ROOT / "ml" / "data" / crop / "**" / "*"), recursive=True)
+              if p.lower().endswith((".jpg", ".jpeg", ".png"))]
         fs = sorted(set(fs))
         random.Random(seed + idx).shuffle(fs)
         fs = fs[:per_crop]
