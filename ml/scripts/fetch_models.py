@@ -17,6 +17,7 @@ import argparse
 import shutil
 import sys
 import tempfile
+import time
 import zipfile
 from pathlib import Path
 from urllib.error import HTTPError, URLError
@@ -67,24 +68,36 @@ def merge_models_tree(src: Path, dest: Path) -> None:
         print(f"  ✓ Installed models for {crop}")
 
 
+def _download(url: str, attempts: int = 4) -> bytes:
+    """Download with retries — a single truncated/blipped fetch must not crash
+    the whole Space. Validates the payload is a real (non-empty) zip."""
+    req = Request(url, headers={"User-Agent": "CropIntel-fetch-models/1.0"})
+    last = None
+    for i in range(1, attempts + 1):
+        try:
+            with urlopen(req, timeout=180) as resp:
+                data = resp.read()
+            # zip files start with 'PK'; guard against truncated/HTML error bodies.
+            if len(data) > 1000 and data[:2] == b"PK":
+                return data
+            last = f"suspect payload ({len(data)} bytes, magic={data[:2]!r})"
+        except (HTTPError, URLError) as e:
+            last = getattr(e, "reason", str(e))
+        print(f"  download attempt {i}/{attempts} failed: {last}", file=sys.stderr)
+        if i < attempts:
+            time.sleep(3 * i)
+    print(f"Download failed after {attempts} attempts: {last}", file=sys.stderr)
+    sys.exit(1)
+
+
 def fetch_and_extract(url: str, dest: Path) -> None:
     print(f"Downloading models from URL…\n  {url}")
-    req = Request(url, headers={"User-Agent": "CropIntel-fetch-models/1.0"})
-    try:
-        with urlopen(req, timeout=120) as resp:
-            data = resp.read()
-    except HTTPError as e:
-        print(f"HTTP error {e.code}: {e.reason}", file=sys.stderr)
-        sys.exit(1)
-    except URLError as e:
-        print(f"Download failed: {e.reason}", file=sys.stderr)
-        sys.exit(1)
-
-    suffix = ".zip"
     if url.lower().split("?")[0].endswith((".tar.gz", ".tgz")):
         print("Tar archives are not supported yet; use a .zip of ml/models/.", file=sys.stderr)
         sys.exit(1)
+    data = _download(url)
 
+    suffix = ".zip"
     with tempfile.TemporaryDirectory() as tmp:
         zpath = Path(tmp) / f"models{suffix}"
         zpath.write_bytes(data)
