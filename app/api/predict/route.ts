@@ -23,9 +23,9 @@
 
 import { NextRequest } from 'next/server'
 import { rateLimit, getRateLimitHeaders } from '@/lib/security/rateLimiter'
-import { validatePredictionRequest } from '@/lib/security/validation'
+import { validateImageSignature, validatePredictionRequest } from '@/lib/security/validation'
 import { createSecureResponse, addSecurityHeaders } from '@/lib/security/headers'
-import { getInferenceUrl } from '@/lib/server/inferenceUrl'
+import { verifyFirebaseBearerToken } from '@/lib/security/firebaseAuth'
 import { ZodError } from 'zod'
 
 /**
@@ -40,11 +40,12 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
  */
 const ALLOWED_MIME_TYPES = [
   'image/jpeg',
-  'image/jpg',
   'image/png',
   'image/webp',
-  'image/gif',
 ]
+
+/** Base URL of the Python inference service (never exposed publicly). */
+const INFERENCE_URL = process.env.INFERENCE_URL || 'http://127.0.0.1:8000'
 
 /** Upstream timeout — model inference is fast; this guards a hung service. */
 const INFERENCE_TIMEOUT_MS = 30_000
@@ -75,6 +76,11 @@ function validateFileContent(file: File): boolean {
   return true
 }
 
+async function hasValidImageSignature(file: File): Promise<boolean> {
+  const header = new Uint8Array(await file.slice(0, 16).arrayBuffer())
+  return validateImageSignature(header, file.type)
+}
+
 export async function POST(request: NextRequest) {
   // ========== RATE LIMITING ==========
   // Apply rate limiting before processing request
@@ -85,15 +91,14 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    let inferenceUrl: string
-    try {
-      inferenceUrl = getInferenceUrl()
-    } catch (error: any) {
-      console.error('Inference service misconfigured:', error)
-      return createSecureResponse(
-        { error: 'Prediction service is not configured. Please set INFERENCE_URL.' },
-        503
-      )
+    const verifiedUser = await verifyFirebaseBearerToken(request)
+    if (!verifiedUser) {
+      return createSecureResponse({ error: 'Sign in before running crop diagnosis.' }, 401)
+    }
+
+    const userRateLimitResponse = rateLimit(request, '/api/predict:user', verifiedUser.uid)
+    if (userRateLimitResponse) {
+      return addSecurityHeaders(userRateLimitResponse)
     }
 
     // ========== INPUT VALIDATION ==========
@@ -124,8 +129,15 @@ export async function POST(request: NextRequest) {
     if (!validateFileContent(image)) {
       return createSecureResponse(
         {
-          error: 'Invalid file. Must be a valid image (JPEG, PNG, WebP, GIF) under 10MB.',
+          error: 'Invalid file. Must be a valid JPEG, PNG, or WebP image under 10MB.',
         },
+        400
+      )
+    }
+
+    if (!(await hasValidImageSignature(image))) {
+      return createSecureResponse(
+        { error: 'Invalid image file. Please upload a JPEG, PNG, or WebP crop photo.' },
         400
       )
     }
@@ -143,7 +155,7 @@ export async function POST(request: NextRequest) {
 
     let upstream: Response
     try {
-      upstream = await fetch(`${inferenceUrl}/predict`, {
+      upstream = await fetch(`${INFERENCE_URL}/predict`, {
         method: 'POST',
         body: upstreamForm,
         signal: AbortSignal.timeout(INFERENCE_TIMEOUT_MS),
@@ -201,7 +213,7 @@ export async function POST(request: NextRequest) {
     const response = createSecureResponse(result, 200)
 
     // Add rate limit headers to successful response
-    const rateLimitHeaders = getRateLimitHeaders(request, '/api/predict')
+    const rateLimitHeaders = getRateLimitHeaders(request, '/api/predict:user', verifiedUser.uid)
     Object.entries(rateLimitHeaders).forEach(([key, value]) => {
       response.headers.set(key, value)
     })

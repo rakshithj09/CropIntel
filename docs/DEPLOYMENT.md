@@ -35,7 +35,7 @@ git clone <repo> /opt/cropintel && cd /opt/cropintel
 
 # .env — models bundle + optional secrets
 cat > .env <<'EOF'
-CROPINTEL_MODELS_URL=https://github.com/HavishNSK/CropIntel/releases/download/v1/cropintel-models-mobile.zip
+CROPINTEL_MODELS_URL=https://github.com/rakshithj09/CropIntel/releases/download/v1/cropintel-models-mobile.zip
 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=...
 CROPINTEL_ADMIN_TOKEN=<random string>   # protects POST /admin/reload
 EOF

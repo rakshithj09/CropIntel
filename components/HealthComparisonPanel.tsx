@@ -54,9 +54,9 @@ function trendStyles(t: HealthTrend) {
   switch (t) {
     case 'improving':
       return {
-        border: 'border-primary-300',
-        bg: 'bg-primary-50',
-        text: 'text-primary-900',
+        border: 'border-emerald-300',
+        bg: 'bg-emerald-50',
+        text: 'text-emerald-900',
         Icon: TrendingUp,
       }
     case 'worsening':
@@ -171,7 +171,7 @@ export default function HealthComparisonPanel({ crop, applyRegionalFilter }: Pro
             onImageSelect={onPastSelect}
             onClear={clearPast}
             title="Earlier field photo"
-            hint="Use a previous photo from this crop or field."
+            hint="Use an old photo from a crop or field."
           />
         </div>
         <div>
@@ -181,7 +181,7 @@ export default function HealthComparisonPanel({ crop, applyRegionalFilter }: Pro
             onImageSelect={onCurrentSelect}
             onClear={clearCurrent}
             title="Today&apos;s field photo"
-            hint="Use the newest photo from the same crop."
+            hint="Use a new photo from the same crop."
           />
         </div>
       </div>
@@ -190,7 +190,7 @@ export default function HealthComparisonPanel({ crop, applyRegionalFilter }: Pro
         type="button"
         onClick={handleCompare}
         disabled={!pastFile || !currentFile || loading}
-        className="btn-primary mt-6 w-full px-6 md:w-auto"
+        className="btn-primary mt-6 w-full px-6"
       >
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowLeftRight className="w-4 h-4" />}
         {loading ? 'Checking both photos...' : 'Compare field change'}

@@ -36,13 +36,14 @@ os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 
 from ml.config import CROPS
 from ml.inference.postprocess import validate_image_quality, format_response
 
 ROOT = Path(__file__).resolve().parents[2]
+MAX_UPLOAD_BYTES = int(os.environ.get("CROPINTEL_MAX_UPLOAD_BYTES", str(10 * 1024 * 1024)))
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 PREDICTION_LOG = Path(
     os.environ.get("CROPINTEL_PREDICTION_LOG", ROOT / "data" / "predictions.jsonl")
 )
@@ -51,22 +52,6 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger("inference")
 
 app = FastAPI(title="CropIntel Inference Service", docs_url=None, redoc_url=None)
-
-_cors_origins = [
-    origin.strip().rstrip("/")
-    for origin in os.environ.get(
-        "CROPINTEL_CORS_ORIGINS",
-        "http://localhost:3050,http://127.0.0.1:3050",
-    ).split(",")
-    if origin.strip()
-]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=_cors_origins,
-    allow_credentials=False,
-    allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["*"],
-)
 
 # crop -> {"predictor": TFLitePredictor|None, "error": str|None, "lock": Lock}
 # TFLite interpreters are not thread-safe; every predict() call takes the
@@ -259,6 +244,16 @@ def _audit(record: dict) -> None:
         log.error("audit log write failed: %s", e)
 
 
+def _has_valid_image_signature(data: bytes, content_type: str) -> bool:
+    if content_type == "image/jpeg":
+        return data.startswith(b"\xff\xd8\xff")
+    if content_type == "image/png":
+        return data.startswith(b"\x89PNG\r\n\x1a\n")
+    if content_type == "image/webp":
+        return len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WEBP"
+    return False
+
+
 @app.on_event("startup")
 def startup() -> None:
     _load_all()
@@ -354,7 +349,16 @@ async def predict(image: UploadFile = File(...), crop: str = Form(...),
         # Message matches route.ts's "no trained models found" mapping.
         return finish({"error": f"No trained models found for {crop}"}, 503, "no_model")
 
-    data = await image.read()
+    content_type = (image.content_type or "").lower()
+    if content_type not in ALLOWED_IMAGE_TYPES:
+        return finish({"error": "Upload a JPEG, PNG, or WebP crop photo."}, 400, "bad_type")
+
+    data = await image.read(MAX_UPLOAD_BYTES + 1)
+    if not data or len(data) > MAX_UPLOAD_BYTES:
+        return finish({"error": "Upload an image smaller than 10MB."}, 400, "bad_size")
+    if not _has_valid_image_signature(data, content_type):
+        return finish({"error": "Upload a valid JPEG, PNG, or WebP crop photo."}, 400, "bad_signature")
+
     record["image_sha256"] = hashlib.sha256(data).hexdigest()
     try:
         pil_image = Image.open(io.BytesIO(data))

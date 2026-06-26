@@ -110,7 +110,7 @@ export default function LeafletMap({ reports = [], onMapClick }: LeafletMapProps
               <h3 className="font-bold text-lg mb-1">
                 {report.crop} - {report.disease}
               </h3>
-              <p className="text-sm text-slate-600 mb-1">
+              <p className="text-sm text-gray-600 mb-1">
                 <span
                   className={`px-2 py-1 rounded text-xs font-bold ${
                     report.severity === 'high'
@@ -124,9 +124,9 @@ export default function LeafletMap({ reports = [], onMapClick }: LeafletMapProps
                 </span>
               </p>
               {report.description && (
-                <p className="text-sm text-slate-700 mt-2">{report.description}</p>
+                <p className="text-sm text-gray-700 mt-2">{report.description}</p>
               )}
-              <p className="text-xs text-slate-500 mt-2">
+              <p className="text-xs text-gray-500 mt-2">
                 {new Date(report.date).toLocaleString()}
               </p>
             </div>

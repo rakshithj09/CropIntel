@@ -3,6 +3,7 @@ import { Bricolage_Grotesque, Space_Grotesk } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '@/components/ui/theme-provider'
 import CursorField from '@/components/CursorField'
+import SiteFooter from '@/components/SiteFooter'
 
 const bricolage = Bricolage_Grotesque({
   subsets: ['latin'],
@@ -16,8 +17,16 @@ const spaceGrotesk = Space_Grotesk({
 })
 
 export const metadata: Metadata = {
-  title: 'CropIntel - Field Crop Checks',
+  title: 'CropIntel - Disease Detection',
   description: 'Check crop leaf photos, save farm areas, and watch nearby crop issue reports.',
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icon.png', type: 'image/png', sizes: '512x512' },
+    ],
+    shortcut: '/favicon.ico',
+    apple: '/icon.png',
+  },
 }
 
 export const viewport: Viewport = {
@@ -47,6 +56,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          <SiteFooter />
         </ThemeProvider>
       </body>
     </html>

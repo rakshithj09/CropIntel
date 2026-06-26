@@ -27,7 +27,9 @@ export default function TipsAndGuidelines() {
         <div className="mt-5 space-y-4 text-field-soil">
           <div className="rounded-xl border border-field-soil/10 bg-field-cream p-4">
             <h4 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
-              <Camera className="w-4 h-4 text-primary-700" />
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-700">
+                1
+              </span>
               Good field photo
             </h4>
             <ul className="space-y-2">

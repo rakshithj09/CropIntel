@@ -7,6 +7,4 @@ export interface OutbreakReport {
   severity: 'low' | 'medium' | 'high'
   date: string
   description: string
-  /** Set when user submits a map report; drives verified / unverified labeling */
-  reporterVerified?: boolean
 }

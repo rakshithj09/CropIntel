@@ -30,15 +30,25 @@ interface RateLimitConfig {
   message?: string
 }
 
+function readPositiveInt(name: string, fallback: number): number {
+  const value = Number(process.env[name])
+  return Number.isFinite(value) && value > 0 ? Math.floor(value) : fallback
+}
+
 /**
  * Default rate limit configurations
  * Following OWASP recommendations for sensible defaults
  */
 const DEFAULT_RATE_LIMITS: Record<string, RateLimitConfig> = {
   '/api/predict': {
-    maxRequests: 20, // 20 requests per minute for prediction endpoint (resource-intensive)
-    windowMs: 60 * 1000, // 1 minute window
+    maxRequests: readPositiveInt('RATE_LIMIT_PREDICT_IP_MAX', 20),
+    windowMs: readPositiveInt('RATE_LIMIT_PREDICT_IP_WINDOW_MS', 60 * 1000),
     message: 'Too many prediction requests. Please wait before trying again.',
+  },
+  '/api/predict:user': {
+    maxRequests: readPositiveInt('RATE_LIMIT_PREDICT_USER_MAX', 30),
+    windowMs: readPositiveInt('RATE_LIMIT_PREDICT_USER_WINDOW_MS', 60 * 1000),
+    message: 'Too many prediction requests for this account. Please wait before trying again.',
   },
   // Add more endpoint-specific limits as needed
   default: {
@@ -97,8 +107,8 @@ function getClientIP(request: NextRequest): string {
     return realIP
   }
 
-  // Fallback to connection IP (may be undefined in serverless environments)
-  return request.ip || 'unknown'
+  // Fallback for runtimes that do not expose a connection IP.
+  return 'unknown'
 }
 
 /**
@@ -114,11 +124,12 @@ function getClientIP(request: NextRequest): string {
  */
 export function rateLimit(
   request: NextRequest,
-  endpoint: string
+  endpoint: string,
+  identity?: string
 ): NextResponse | null {
   const clientIP = getClientIP(request)
   const config = DEFAULT_RATE_LIMITS[endpoint] || DEFAULT_RATE_LIMITS.default
-  const key = `${clientIP}:${endpoint}`
+  const key = `${identity || clientIP}:${endpoint}`
   const now = Date.now()
 
   // Get or initialize rate limit entry
@@ -173,11 +184,12 @@ export function rateLimit(
  */
 export function getRateLimitHeaders(
   request: NextRequest,
-  endpoint: string
+  endpoint: string,
+  identity?: string
 ): Record<string, string> {
   const clientIP = getClientIP(request)
   const config = DEFAULT_RATE_LIMITS[endpoint] || DEFAULT_RATE_LIMITS.default
-  const key = `${clientIP}:${endpoint}`
+  const key = `${identity || clientIP}:${endpoint}`
   const entry = rateLimitStore.get(key)
 
   if (!entry) {

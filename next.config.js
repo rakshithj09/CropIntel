@@ -25,13 +25,6 @@ const nextConfig = {
         allowedDevOrigins: [...new Set([...devOriginsFromEnv, '127.0.0.1', 'localhost'])],
       }
     : {}),
-  // Allow importing Python modules (for API routes)
-  serverRuntimeConfig: {
-    // Will be available only on the server side
-  },
-  publicRuntimeConfig: {
-    // Will be available on both server and client
-  },
   // Security: Disable X-Powered-By header
   poweredByHeader: false,
 }

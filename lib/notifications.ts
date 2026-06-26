@@ -91,10 +91,9 @@ export function shouldNotifyFarmer(
  * Generate notification message for an outbreak
  */
 export function generateNotificationMessage(
-  outbreak: OutbreakLocation,
-  distance: number
+  outbreak: OutbreakLocation
 ): string {
-  return `${outbreak.severity.toUpperCase()} ALERT: ${outbreak.disease} detected in ${outbreak.crop} ${distance.toFixed(1)} miles away`
+  return `${outbreak.disease} detected in ${outbreak.crop}`
 }
 
 /**
@@ -134,7 +133,7 @@ export function createNotifications(
     farmerId: farmer.id,
     outbreakId: outbreak.id,
     distance,
-    message: generateNotificationMessage(outbreak, distance),
+    message: generateNotificationMessage(outbreak),
     severity: outbreak.severity,
     read: false,
     createdAt: new Date().toISOString(),

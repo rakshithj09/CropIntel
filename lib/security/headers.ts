@@ -29,16 +29,23 @@ import { NextResponse } from 'next/server'
  * @see https://developers.google.com/maps/documentation/javascript/content-security-policy
  */
 function contentSecurityPolicy(): string {
+  const firebaseAuthDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+  const firebaseFrameSources = [
+    'https://*.firebaseapp.com',
+    'https://*.web.app',
+    ...(firebaseAuthDomain ? [`https://${firebaseAuthDomain}`] : []),
+  ]
+
   return [
     "default-src 'self'",
     // Next.js needs unsafe-inline / unsafe-eval (dev); Maps needs googleapis + gstatic + blob workers
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.googleapis.com https://*.gstatic.com *.google.com https://*.ggpht.com *.googleusercontent.com blob:",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com *.google.com *.googleusercontent.com",
-    "connect-src 'self' https://*.googleapis.com *.google.com https://*.gstatic.com data: blob:",
+    "connect-src 'self' https://*.googleapis.com https://*.gstatic.com *.google.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com https://*.web.app data: blob:",
     "font-src 'self' data: https://fonts.gstatic.com",
     // was frame-src 'none' — that blocks Maps’ iframes and leads to a blank map / broken UI
-    "frame-src 'self' *.google.com https://*.googleapis.com https://*.gstatic.com",
+    `frame-src 'self' *.google.com https://*.googleapis.com https://*.gstatic.com ${firebaseFrameSources.join(' ')}`,
     "worker-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'self'",

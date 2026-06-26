@@ -23,7 +23,14 @@ import { z } from 'zod'
  * Valid crop types (whitelist approach)
  * Prevents injection attacks by only allowing known values
  */
-const VALID_CROPS = ['corn', 'rice', 'soybean', 'wheat', 'tomato'] as const
+export const VALID_CROPS = ['corn', 'rice', 'soybean', 'wheat', 'tomato'] as const
+export const VALID_US_STATE_CODES = [
+  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+  'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+  'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+  'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+  'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY',
+] as const
 
 /**
  * Crop type schema
@@ -32,6 +39,15 @@ const VALID_CROPS = ['corn', 'rice', 'soybean', 'wheat', 'tomato'] as const
 export const cropSchema = z.enum(VALID_CROPS, {
   message: 'Invalid crop type. Must be one of: corn, rice, soybean, wheat, tomato',
 })
+
+export const usStateCodeSchema = z.enum(VALID_US_STATE_CODES, {
+  message: 'Invalid state code.',
+})
+
+const trimmedString = (min: number, max: number, label: string) =>
+  z.string()
+    .transform((value) => value.trim())
+    .pipe(z.string().min(min, `${label} is required`).max(max, `${label} is too long`))
 
 /**
  * File upload validation schema
@@ -57,8 +73,8 @@ export const imageUploadSchema = z.object({
       { message: 'Image file size must be less than 10MB' }
     )
     .refine(
-      (file) => file.type.startsWith('image/'),
-      { message: 'File must be an image (JPEG, PNG, etc.)' }
+      (file) => ['image/jpeg', 'image/png', 'image/webp'].includes(file.type),
+      { message: 'File must be a JPEG, PNG, or WebP image' }
     ),
   
   /**
@@ -197,3 +213,55 @@ export const farmerRegistrationSchema = z.object({
   lng: z.number().min(-180).max(180),
   crops: z.array(cropSchema).min(1).max(10), // At least 1 crop, max 10
 }).strict()
+
+export const displayNameSchema = trimmedString(1, 100, 'Name')
+
+export const createFarmSchema = z.object({
+  name: trimmedString(1, 120, 'Farm name'),
+  address: trimmedString(1, 240, 'Address'),
+  stateCode: usStateCodeSchema,
+  crops: z.array(cropSchema).min(1, 'Select at least one crop').max(5, 'Too many crops selected'),
+  acreage: z.number().min(0).max(1_000_000).nullable().optional(),
+  lat: z.number().min(-90).max(90).nullable().optional(),
+  lng: z.number().min(-180).max(180).nullable().optional(),
+}).strict()
+
+export const joinCodeSchema = z.string()
+  .transform((value) => value.trim().toUpperCase())
+  .pipe(z.string().regex(/^[A-Z2-9]{6}$/, 'Enter the six-character farm join code.'))
+
+export function validateImageSignature(bytes: Uint8Array, mimeType: string): boolean {
+  if (mimeType === 'image/jpeg') {
+    return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff
+  }
+
+  if (mimeType === 'image/png') {
+    return (
+      bytes.length >= 8 &&
+      bytes[0] === 0x89 &&
+      bytes[1] === 0x50 &&
+      bytes[2] === 0x4e &&
+      bytes[3] === 0x47 &&
+      bytes[4] === 0x0d &&
+      bytes[5] === 0x0a &&
+      bytes[6] === 0x1a &&
+      bytes[7] === 0x0a
+    )
+  }
+
+  if (mimeType === 'image/webp') {
+    return (
+      bytes.length >= 12 &&
+      bytes[0] === 0x52 &&
+      bytes[1] === 0x49 &&
+      bytes[2] === 0x46 &&
+      bytes[3] === 0x46 &&
+      bytes[8] === 0x57 &&
+      bytes[9] === 0x45 &&
+      bytes[10] === 0x42 &&
+      bytes[11] === 0x50
+    )
+  }
+
+  return false
+}

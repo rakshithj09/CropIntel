@@ -21,8 +21,6 @@ const GoogleMapComponent = dynamic(() => import('./GoogleMap'), {
 interface USOutbreakMapProps {
   reports?: OutbreakReport[]
   onReportSubmit?: (report: OutbreakReport) => void
-  /** Reporter status for new submissions from this browser */
-  reporterVerified: boolean
 }
 
 function triggerMapResize(map: google.maps.Map | null) {
@@ -81,7 +79,7 @@ async function exitDocumentFullscreen(): Promise<void> {
   }
 }
 
-export default function USOutbreakMap({ reports = [], onReportSubmit, reporterVerified }: USOutbreakMapProps) {
+export default function USOutbreakMap({ reports = [], onReportSubmit }: USOutbreakMapProps) {
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [showReportForm, setShowReportForm] = useState(false)
   const mapCardRef = useRef<HTMLDivElement>(null)
@@ -215,7 +213,6 @@ export default function USOutbreakMap({ reports = [], onReportSubmit, reporterVe
       severity: formData.severity,
       date: new Date().toISOString(),
       description: formData.description,
-      reporterVerified,
     }
 
     if (onReportSubmit) {

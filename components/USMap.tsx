@@ -47,7 +47,7 @@ export default function USMap({ onLocationClick, markers = [] }: USMapProps) {
   }
 
   return (
-    <div className="w-full h-full relative bg-gradient-to-br from-primary-50 to-primary-50 rounded-lg border-2 border-slate-300 overflow-hidden">
+    <div className="w-full h-full relative bg-gradient-to-br from-blue-50 to-green-50 rounded-lg border-2 border-slate-300 overflow-hidden">
       {/* US Map SVG */}
       <div
         ref={mapRef}
@@ -126,7 +126,7 @@ export default function USMap({ onLocationClick, markers = [] }: USMapProps) {
         </svg>
 
         {/* Click instruction overlay */}
-        <div className="absolute bottom-4 left-4 bg-primary-600 text-white px-4 py-2 rounded-lg shadow-lg z-10">
+        <div className="absolute bottom-4 left-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg z-10">
           <p className="text-sm font-semibold flex items-center gap-2">
             <MapPin className="w-4 h-4" />
             Click on map to report outbreak
