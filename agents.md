@@ -219,6 +219,8 @@ The policy must describe:
 - How users contact CropIntel about privacy
 - Effective date and update process
 
+Whenever the Privacy Policy content changes, update the policy's visible effective date in the page UI and any matching metadata or documentation in the same change.
+
 Do not claim compliance with a law, certification, or framework unless the product has been reviewed and meets the applicable requirements.
 
 ### Retention and deletion
