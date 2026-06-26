@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react'
 import { ChevronDown, Clock3, Trash2 } from 'lucide-react'
 import { getDiseaseInfo } from '@/lib/diseaseInfo'
 
-interface PredictionRecord {
+export interface PredictionRecord {
   id: string
   timestamp: string
   crop: string
