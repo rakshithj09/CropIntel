@@ -6,13 +6,13 @@ import {
   doc,
   getDoc,
   getDocs,
-  limit,
   query,
   serverTimestamp,
   setDoc,
   where,
   writeBatch,
 } from 'firebase/firestore'
+import { createFarmSchema, joinCodeSchema } from '@/lib/security/validation'
 import { getFirebaseDb } from './firebase'
 import type { Diagnosis, Farm, FarmMember } from './types'
 
@@ -42,20 +42,25 @@ function makeJoinCode() {
 
 export async function createFarmForUser(userId: string, input: CreateFarmInput) {
   const db = getFirebaseDb()
+  const validated = createFarmSchema.parse({
+    ...input,
+    stateCode: input.stateCode.trim().toUpperCase(),
+  })
   const joinCode = makeJoinCode()
   const farmRef = doc(collection(db, 'farms'))
   const memberRef = doc(db, 'farmMembers', buildMemberId(farmRef.id, userId))
+  const joinCodeRef = doc(db, 'farmJoinCodes', joinCode)
   const batch = writeBatch(db)
   const farmPayload = {
-    name: input.name.trim(),
+    name: validated.name,
     ownerId: userId,
     joinCode,
-    address: input.address.trim(),
-    lat: input.lat ?? null,
-    lng: input.lng ?? null,
-    stateCode: input.stateCode.trim().toUpperCase(),
-    crops: input.crops,
-    acreage: input.acreage ?? null,
+    address: validated.address,
+    lat: validated.lat ?? null,
+    lng: validated.lng ?? null,
+    stateCode: validated.stateCode,
+    crops: validated.crops,
+    acreage: validated.acreage ?? null,
     verificationStatus: 'unverified',
     createdAt: serverTimestamp(),
   }
@@ -67,6 +72,11 @@ export async function createFarmForUser(userId: string, input: CreateFarmInput) 
     role: 'owner',
     joinedAt: serverTimestamp(),
   })
+  batch.set(joinCodeRef, {
+    farmId: farmRef.id,
+    createdBy: userId,
+    createdAt: serverTimestamp(),
+  })
   await batch.commit()
 
   return { id: farmRef.id, ...farmPayload } as Farm
@@ -74,28 +84,33 @@ export async function createFarmForUser(userId: string, input: CreateFarmInput) 
 
 export async function joinFarmByCode(userId: string, code: string) {
   const db = getFirebaseDb()
-  const normalized = code.trim().toUpperCase()
-  if (!/^[A-Z0-9]{6}$/.test(normalized)) {
-    throw new Error('Enter the six-character farm join code.')
-  }
-
-  const farmQuery = query(collection(db, 'farms'), where('joinCode', '==', normalized), limit(1))
-  const farmMatches = await getDocs(farmQuery)
-  if (farmMatches.empty) {
+  const normalized = joinCodeSchema.parse(code)
+  const joinCodeSnapshot = await getDoc(doc(db, 'farmJoinCodes', normalized))
+  if (!joinCodeSnapshot.exists()) {
     throw new Error('That join code is invalid or expired. Check the code and try again.')
   }
 
-  const farmDoc = farmMatches.docs[0]
+  const joinData = joinCodeSnapshot.data() as { farmId?: string }
+  if (!joinData.farmId) {
+    throw new Error('That join code is invalid or expired. Check the code and try again.')
+  }
+
   await setDoc(
-    doc(db, 'farmMembers', buildMemberId(farmDoc.id, userId)),
+    doc(db, 'farmMembers', buildMemberId(joinData.farmId, userId)),
     {
-      farmId: farmDoc.id,
+      farmId: joinData.farmId,
       userId,
       role: 'member',
+      joinCodeUsed: normalized,
       joinedAt: serverTimestamp(),
     },
     { merge: true }
   )
+
+  const farmDoc = await getDoc(doc(db, 'farms', joinData.farmId))
+  if (!farmDoc.exists()) {
+    throw new Error('That farm is no longer available.')
+  }
 
   return { id: farmDoc.id, ...farmDoc.data() } as Farm
 }

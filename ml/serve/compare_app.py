@@ -178,19 +178,26 @@ drop.onclick=()=>file.click();
 ['dragleave','drop'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove('hov')}));
 drop.addEventListener('drop',ev=>{if(ev.dataTransfer.files[0])send(ev.dataTransfer.files[0])});
 file.addEventListener('change',()=>{if(file.files[0])send(file.files[0])});
+function esc(v){
+  return String(v ?? '').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
 function card(r){
   if(!r) return `<div class="card"><h3>SigLIP2 (pretrained)</h3><div class="na">Only available for rice.</div></div>`;
-  if(r.error) return `<div class="card"><h3>Model</h3><div class="err">${r.error}</div></div>`;
-  const rows=r.predictions.map(p=>`<div class="row"><div class="lab">${p.label}</div>
-    <div class="barwrap"><div class="fill" style="width:${p.pct}%"></div></div>
-    <div class="pct">${p.pct}%</div></div>`).join('');
+  if(r.error) return `<div class="card"><h3>Model</h3><div class="err">${esc(r.error)}</div></div>`;
+  const rows=r.predictions.map(p=>{
+    const pct=Math.max(0,Math.min(100,Number(p.pct)||0)).toFixed(1);
+    return `<div class="row"><div class="lab">${esc(p.label)}</div>
+    <div class="barwrap"><div class="fill" style="width:${pct}%"></div></div>
+    <div class="pct">${pct}%</div></div>`;
+  }).join('');
   const badge=r.meets_threshold?`<span class="badge ok">confident</span>`:`<span class="badge low">low confidence</span>`;
-  return `<div class="card"><h3>${r.model}</h3>
-    <div class="top">${r.top}</div><div class="conf">${r.confidence}%</div> ${badge}${rows}</div>`;
+  return `<div class="card"><h3>${esc(r.model)}</h3>
+    <div class="top">${esc(r.top)}</div><div class="conf">${esc(r.confidence)}%</div> ${badge}${rows}</div>`;
 }
 function send(f){
   err.textContent='';grid.innerHTML='';spin.style.display='block';
-  preview.innerHTML=`<img src="${URL.createObjectURL(f)}">`;
+  preview.textContent='';
+  const img=document.createElement('img');img.src=URL.createObjectURL(f);preview.appendChild(img);
   const fd=new FormData();fd.append('image',f);fd.append('crop',cropSel.value);
   fetch('/compare',{method:'POST',body:fd}).then(r=>r.json()).then(d=>{
     spin.style.display='none';

@@ -28,6 +28,7 @@ export type FarmMember = {
   farmId: string
   userId: string
   role: 'owner' | 'admin' | 'member'
+  joinCodeUsed?: string
   joinedAt: Timestamp | Date
 }
 

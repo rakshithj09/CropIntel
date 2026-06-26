@@ -13,10 +13,9 @@
  */
 
 import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
 import { addSecurityHeaders } from './lib/security/headers'
 
-export function middleware(request: NextRequest) {
+export function proxy() {
   // Create response
   const response = NextResponse.next()
 

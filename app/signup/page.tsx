@@ -15,6 +15,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [acceptedPrivacyNotice, setAcceptedPrivacyNotice] = useState(false)
   const [loading, setLoading] = useState(false)
   const [checkingAuth, setCheckingAuth] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -53,6 +54,11 @@ export default function SignupPage() {
     setError(null)
 
     try {
+      if (!acceptedPrivacyNotice) {
+        setError('Review and accept the privacy notice before creating an account.')
+        return
+      }
+
       await signUpWithEmail(`${firstName.trim()} ${lastName.trim()}`.trim(), email.trim(), password)
       router.replace('/onboarding')
     } catch (err: any) {
@@ -158,6 +164,23 @@ export default function SignupPage() {
         </div>
 
         {error && <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">{error}</p>}
+
+        <label className="flex gap-3 rounded-xl border border-ink/10 bg-white/70 p-4 text-sm leading-6 text-field-soil">
+          <input
+            type="checkbox"
+            checked={acceptedPrivacyNotice}
+            onChange={(event) => setAcceptedPrivacyNotice(event.target.checked)}
+            required
+            className="mt-1 h-4 w-4 shrink-0"
+          />
+          <span>
+            I understand CropIntel stores account details, farm details, diagnosis records, and locally saved crop
+            check history as described in the{' '}
+            <Link className="font-bold text-primary-800 hover:text-primary-900" href="/privacy">
+              Privacy Policy
+            </Link>.
+          </span>
+        </label>
 
         <button type="submit" disabled={loading} className="btn-primary w-full border border-ink/20">
           {loading && <Loader2 className="h-4 w-4 animate-spin" />}
