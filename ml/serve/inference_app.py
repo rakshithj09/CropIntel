@@ -144,6 +144,91 @@ def _cross_crop_check(pil_image, selected_crop: str, selected_conf: float,
     }
 
 
+# ---- Crop-ID classifier: the primary wrong-crop gate when a model is present.
+# A dedicated 5-class "which crop is this leaf?" model is far more reliable than
+# comparing the disease models' confidences (see docs/CROP_ID_GATE.md). If no
+# crop_id model is installed, we transparently fall back to the heuristic above.
+# 0.85 chosen from a held-out gate simulation (scripts: validate/gate_sim): vs the
+# heuristic it cut false-rejects (2.8%->2.3%) AND lifted catch (78.5%->93.9%).
+# Residual false-rejects concentrate in wheat (the model's weak crop, ~84%), so
+# the UI offers a deliberate "check anyway" override (skip_crop_check).
+CROP_ID_MIN_CONF = float(os.environ.get("CROPINTEL_CROP_ID_MIN_CONF", "0.85"))
+_crop_id: dict = {"ready": False, "error": None, "lock": threading.Lock()}
+
+
+def _load_crop_id() -> None:
+    from ml.config import MODELS_DIR
+    mdir = MODELS_DIR / "crop_id"
+    if not mdir.exists():
+        _crop_id["error"] = "not installed"
+        return
+    try:
+        from ml.inference.versions import resolve_version
+        ver = resolve_version(mdir)
+        if not ver:
+            _crop_id["error"] = "no usable version"
+            return
+        import tensorflow as tf
+        vdir = mdir / ver
+        meta = json.load(open(vdir / "metadata.json"))
+        class_names = meta["class_names"]
+        input_shape = tuple(meta["input_shape"])
+        force_tflite = os.environ.get("CROPINTEL_BACKEND", "").lower() == "tflite"
+        keras_p, tfl_p = vdir / "checkpoint.keras", vdir / "model.tflite"
+        if keras_p.exists() and not (force_tflite and tfl_p.exists()):
+            model = tf.keras.models.load_model(keras_p)
+            kind = "keras"
+            def _infer(arr):
+                return model.predict(arr, verbose=0)[0]
+        elif tfl_p.exists():
+            interp = tf.lite.Interpreter(model_path=str(tfl_p))
+            interp.allocate_tensors()
+            di, do = interp.get_input_details()[0], interp.get_output_details()[0]
+            kind = "tflite"
+            def _infer(arr):
+                interp.set_tensor(di["index"], arr.astype(di["dtype"]))
+                interp.invoke()
+                return interp.get_tensor(do["index"])[0]
+        else:
+            _crop_id["error"] = "no model file"
+            return
+        _crop_id.update({"infer": _infer, "class_names": class_names,
+                         "input_shape": input_shape, "version": ver,
+                         "ready": True, "error": None})
+        log.info("loaded crop_id %s (%s): %s", ver, kind, class_names)
+    except Exception as e:
+        _crop_id["error"] = str(e)
+        log.warning("could not load crop_id: %s", e)
+
+
+def _crop_id_predict(pil_image):
+    """Return (crop_name, confidence_frac) or None when no crop_id model loaded."""
+    if not _crop_id.get("ready"):
+        return None
+    import numpy as np
+    ish = _crop_id["input_shape"]
+    img = pil_image.convert("RGB").resize((int(ish[0]), int(ish[1])))
+    arr = np.expand_dims(np.asarray(img, dtype=np.float32) / 255.0, 0)
+    with _crop_id["lock"]:
+        probs = np.asarray(_crop_id["infer"](arr), dtype=np.float64)
+    i = int(np.argmax(probs))
+    return _crop_id["class_names"][i], float(probs[i])
+
+
+def _wrong_crop_gate(pil_image, selected_crop: str, selected_conf: float,
+                     selected_nic: bool) -> dict:
+    """Primary gate: dedicated crop-ID model; falls back to the heuristic."""
+    cid = _crop_id_predict(pil_image)
+    if cid is not None:
+        id_crop, id_conf = cid
+        if id_crop != selected_crop and id_conf >= CROP_ID_MIN_CONF:
+            return {"crop_mismatch": True, "suggested_crop": id_crop,
+                    "suggested_confidence": round(id_conf * 100, 2)}
+        return {"crop_mismatch": False, "suggested_crop": None,
+                "suggested_confidence": None}
+    return _cross_crop_check(pil_image, selected_crop, selected_conf, selected_nic)
+
+
 def _load_crop(crop: str) -> dict:
     from ml.inference.tflite_predictor import TFLitePredictor
     entry = {"predictor": None, "error": None, "lock": threading.Lock()}
@@ -177,6 +262,7 @@ def _audit(record: dict) -> None:
 @app.on_event("startup")
 def startup() -> None:
     _load_all()
+    _load_crop_id()
 
 
 @app.get("/healthz")
@@ -213,6 +299,12 @@ def models():
                 "backend": "keras" if getattr(p, "use_keras", False) else "tflite",
                 "classes": p.class_names,
             }
+    out["crop_id"] = (
+        {"loaded": True, "version": _crop_id.get("version"),
+         "gate": "crop-id-model"}
+        if _crop_id.get("ready")
+        else {"loaded": False, "error": _crop_id.get("error"), "gate": "heuristic-fallback"}
+    )
     return out
 
 
@@ -222,13 +314,17 @@ def admin_reload(request: Request):
     if expected and request.headers.get("X-Admin-Token") != expected:
         return JSONResponse({"error": "unauthorized"}, status_code=401)
     _load_all()
+    _load_crop_id()
     return models()
 
 
 @app.post("/predict")
-async def predict(image: UploadFile = File(...), crop: str = Form(...)):
+async def predict(image: UploadFile = File(...), crop: str = Form(...),
+                  skip_crop_check: str = Form("")):
     started = time.monotonic()
     crop = crop.strip().lower()
+    # User explicitly insisted the crop is correct after a wrong-crop block.
+    skip_gate = str(skip_crop_check).strip().lower() in ("1", "true", "yes")
     record = {
         "ts": datetime.now(timezone.utc).isoformat(),
         "crop": crop,
@@ -293,13 +389,17 @@ async def predict(image: UploadFile = File(...), crop: str = Form(...)):
     # Wrong-crop guard: only when the selected crop is unsure, see if a different
     # crop fits clearly better and, if so, block with a suggestion.
     try:
-        cross = _cross_crop_check(
-            pil_image, crop,
-            selected_conf=float(result["confidence"]),
-            selected_nic=bool(fv["not_in_catalog"]),
-        )
+        if skip_gate:
+            cross = {"crop_mismatch": False, "suggested_crop": None,
+                     "suggested_confidence": None}
+        else:
+            cross = _wrong_crop_gate(
+                pil_image, crop,
+                selected_conf=float(result["confidence"]),
+                selected_nic=bool(fv["not_in_catalog"]),
+            )
     except Exception:
-        log.exception("cross-crop gate errored for %s", crop)
+        log.exception("wrong-crop gate errored for %s", crop)
         cross = {"crop_mismatch": False, "suggested_crop": None,
                  "suggested_confidence": None}
     response.update(cross)

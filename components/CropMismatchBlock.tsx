@@ -11,6 +11,8 @@ interface CropMismatchBlockProps {
   suggestedConfidence: number | null
   /** Re-run the diagnosis under the suggested crop (only when one is known). */
   onUseSuggested?: () => void
+  /** Escape hatch: re-run for the originally selected crop, skipping the gate. */
+  onOverride?: () => void
   /** Clear the photo so the farmer can take another. */
   onRetake: () => void
 }
@@ -22,6 +24,7 @@ export default function CropMismatchBlock({
   suggestedCrop,
   suggestedConfidence,
   onUseSuggested,
+  onOverride,
   onRetake,
 }: CropMismatchBlockProps) {
   return (
@@ -73,6 +76,17 @@ export default function CropMismatchBlock({
               Take another photo
             </button>
           </div>
+
+          {/* Escape hatch for the occasional wrong block (e.g. wheat). Low-key
+              on purpose: most users should heed the suggestion. */}
+          {onOverride && (
+            <button
+              onClick={onOverride}
+              className="mt-3 text-xs font-medium text-amber-800/80 underline underline-offset-2 hover:text-amber-900"
+            >
+              It really is {cap(selectedCrop)} — check anyway
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -212,7 +212,7 @@ export default function Home() {
       ? `Using common ${selectedCrop} disease patterns for ${selectedState}. If this does not match what you see, check the other possible matches below.`
       : undefined
 
-  const handlePredict = async (cropOverride?: string) => {
+  const handlePredict = async (cropOverride?: string, skipGate?: boolean) => {
     if (!selectedImage) {
       setError('Please select an image first')
       return
@@ -233,6 +233,8 @@ export default function Home() {
       const formData = new FormData()
       formData.append('image', selectedImage)
       formData.append('crop', cropToUse)
+      // User insisted the crop is right after a wrong-crop block.
+      if (skipGate) formData.append('skip_crop_check', 'true')
 
       const response = await fetch('/api/predict', {
         method: 'POST',
@@ -488,6 +490,7 @@ export default function Home() {
                           ? () => handlePredict(prediction.suggested_crop)
                           : undefined
                       }
+                      onOverride={() => handlePredict(selectedCrop, true)}
                       onRetake={handleClear}
                     />
                   )}

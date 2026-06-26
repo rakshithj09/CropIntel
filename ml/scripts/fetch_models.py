@@ -47,7 +47,9 @@ def _find_models_root(extracted: Path) -> Path | None:
 def merge_models_tree(src: Path, dest: Path) -> None:
     """Copy crop/version trees from src into dest (dest is MODELS_DIR)."""
     dest.mkdir(parents=True, exist_ok=True)
-    for crop in CROPS:
+    # "crop_id" is the optional wrong-crop gate model (not a disease crop, so it
+    # isn't in CROPS) — install it too when the bundle carries it.
+    for crop in (*CROPS, "crop_id"):
         src_crop = src / crop
         if not src_crop.is_dir():
             continue

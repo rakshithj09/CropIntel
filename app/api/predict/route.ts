@@ -135,6 +135,11 @@ export async function POST(request: NextRequest) {
     const upstreamForm = new FormData()
     upstreamForm.append('image', image)
     upstreamForm.append('crop', crop)
+    // Optional: user insisted the crop is correct after a wrong-crop block.
+    const skipCropCheck = formData.get('skip_crop_check')
+    if (typeof skipCropCheck === 'string' && skipCropCheck) {
+      upstreamForm.append('skip_crop_check', skipCropCheck)
+    }
 
     let upstream: Response
     try {
