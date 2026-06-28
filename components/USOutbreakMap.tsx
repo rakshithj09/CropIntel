@@ -545,7 +545,7 @@ export default function USOutbreakMap({
       </section>
 
       {mounted && showReportForm && createPortal(
-        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center p-3 sm:p-4">
+        <div className="fixed inset-0 z-[90000] flex items-center justify-center p-3 sm:p-4">
           <button
             type="button"
             aria-label="Close report form"
