@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import Image from 'next/image'
+import { createPortal } from 'react-dom'
 import {
   AlertTriangle,
   Camera,
@@ -170,6 +171,7 @@ export default function USOutbreakMap({
   const [submitting, setSubmitting] = useState(false)
   const [formMessage, setFormMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [busyReportId, setBusyReportId] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
   const mapCardRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<google.maps.Map | null>(null)
   const [browserFullscreen, setBrowserFullscreen] = useState(false)
@@ -177,6 +179,10 @@ export default function USOutbreakMap({
 
   const expanded = browserFullscreen || layoutFullscreen
   const stateCode = selectedFarm?.stateCode ?? ''
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const closeModal = useCallback(() => {
     if (submitting) return
@@ -538,8 +544,8 @@ export default function USOutbreakMap({
         )}
       </section>
 
-      {showReportForm && (
-        <div className="fixed inset-0 z-[6000] flex items-center justify-center p-3 sm:p-4">
+      {mounted && showReportForm && createPortal(
+        <div className="fixed inset-0 z-[2147483647] flex items-center justify-center p-3 sm:p-4">
           <button
             type="button"
             aria-label="Close report form"
@@ -697,7 +703,8 @@ export default function USOutbreakMap({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
