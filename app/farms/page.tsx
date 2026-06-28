@@ -4,16 +4,52 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { Loader2, Plus } from 'lucide-react'
+import { Check, Loader2, LogOut, Plus, RefreshCw, RotateCcw, X } from 'lucide-react'
 import { signOutUser, subscribeToAuth } from '@/src/lib/auth'
-import { getUserFarms } from '@/src/lib/farms'
-import type { Farm } from '@/src/lib/types'
+import {
+  approveFarmAccessRequest,
+  denyFarmAccessRequest,
+  getPendingFarmAccessRequestsForOwner,
+  getUserFarmAccessRequests,
+  getUserFarmSummaries,
+  leaveFarm,
+  refreshFarmSearchIndex,
+  regenerateFarmJoinCode,
+} from '@/src/lib/farms'
+import type { Farm, FarmAccessRequest, FarmMember } from '@/src/lib/types'
+import type { User } from 'firebase/auth'
+
+type FarmSummary = {
+  farm: Farm
+  membership: FarmMember | null
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback
+}
 
 export default function FarmsPage() {
   const router = useRouter()
-  const [farms, setFarms] = useState<Farm[]>([])
+  const [user, setUser] = useState<User | null>(null)
+  const [farmSummaries, setFarmSummaries] = useState<FarmSummary[]>([])
+  const [accessRequests, setAccessRequests] = useState<FarmAccessRequest[]>([])
+  const [ownerRequests, setOwnerRequests] = useState<FarmAccessRequest[]>([])
   const [loading, setLoading] = useState(true)
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [scrolled, setScrolled] = useState(false)
+
+  const loadFarmData = async (uid: string) => {
+    const [summaries, requests, pendingOwnerRequests] = await Promise.all([
+      getUserFarmSummaries(uid),
+      getUserFarmAccessRequests(uid),
+      getPendingFarmAccessRequestsForOwner(uid),
+    ])
+    setFarmSummaries(summaries)
+    setAccessRequests(requests)
+    setOwnerRequests(pendingOwnerRequests)
+  }
 
   useEffect(() => {
     return subscribeToAuth(async (user) => {
@@ -22,8 +58,14 @@ export default function FarmsPage() {
         return
       }
 
-      setFarms(await getUserFarms(user.uid))
-      setLoading(false)
+      setUser(user)
+      try {
+        await loadFarmData(user.uid)
+      } catch (err: unknown) {
+        setError(getErrorMessage(err, 'Could not load farm data.'))
+      } finally {
+        setLoading(false)
+      }
     })
   }, [router])
 
@@ -40,6 +82,22 @@ export default function FarmsPage() {
   const handleSignOut = async () => {
     await signOutUser()
     router.replace('/login')
+  }
+
+  const runFarmAction = async (key: string, action: () => Promise<string>) => {
+    if (!user) return
+    setActionLoading(key)
+    setError(null)
+    setMessage(null)
+    try {
+      const nextMessage = await action()
+      await loadFarmData(user.uid)
+      setMessage(nextMessage)
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Could not complete that action.'))
+    } finally {
+      setActionLoading(null)
+    }
   }
 
   if (loading) {
@@ -120,6 +178,7 @@ export default function FarmsPage() {
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-3xl font-extrabold text-primary-900">Your farms</h1>
+            <p className="mt-1 text-sm text-field-soil">Manage every farm connected to this account.</p>
           </div>
           <div className="flex gap-2">
             <Link href="/farms/new" className="btn-primary">
@@ -129,7 +188,78 @@ export default function FarmsPage() {
           </div>
         </div>
 
-        {farms.length === 0 ? (
+        {error && <p className="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">{error}</p>}
+        {message && <p className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">{message}</p>}
+
+        {ownerRequests.length > 0 && (
+          <section className="mb-6">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="text-xl font-extrabold text-primary-900">Pending access requests</h2>
+              <button
+                type="button"
+                onClick={() => user && runFarmAction('refresh-requests', async () => {
+                  await loadFarmData(user.uid)
+                  return 'Requests refreshed.'
+                })}
+                className="btn-secondary px-3 py-2 text-sm"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Refresh
+              </button>
+            </div>
+            <div className="grid gap-3">
+              {ownerRequests.map((request) => (
+                <article key={request.id} className="surface rounded-2xl p-4">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-primary-900">{request.farmName}</p>
+                      <p className="mt-1 text-sm text-field-soil">
+                        Requester ID: <span className="font-mono">{request.requesterId}</span>
+                      </p>
+                      <span className="mt-2 inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-bold uppercase text-amber-800">
+                        {request.status}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 sm:flex">
+                      <button
+                        type="button"
+                        disabled={actionLoading === `approve-${request.id}`}
+                        onClick={() => {
+                          if (!user) return
+                          runFarmAction(`approve-${request.id}`, async () => {
+                            await approveFarmAccessRequest(user.uid, request)
+                            return 'Access request approved.'
+                          })
+                        }}
+                        className="btn-primary justify-center px-4 py-2 text-sm"
+                      >
+                        {actionLoading === `approve-${request.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                        Approve
+                      </button>
+                      <button
+                        type="button"
+                        disabled={actionLoading === `deny-${request.id}`}
+                        onClick={() => {
+                          if (!user) return
+                          runFarmAction(`deny-${request.id}`, async () => {
+                            await denyFarmAccessRequest(user.uid, request)
+                            return 'Access request denied.'
+                          })
+                        }}
+                        className="btn-secondary justify-center px-4 py-2 text-sm"
+                      >
+                        {actionLoading === `deny-${request.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+                        Deny
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {farmSummaries.length === 0 ? (
           <section className="surface rounded-2xl p-6 text-center">
             <p className="text-sm text-field-soil">No farms are connected to this account yet.</p>
             <Link href="/farms/new" className="btn-primary mt-5">
@@ -138,7 +268,7 @@ export default function FarmsPage() {
           </section>
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
-            {farms.map((farm) => (
+            {farmSummaries.map(({ farm, membership }) => (
               <article key={farm.id} className="surface rounded-2xl p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -146,7 +276,7 @@ export default function FarmsPage() {
                     <p className="mt-1 text-sm text-field-soil">{farm.address}</p>
                   </div>
                   <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-bold uppercase text-slate-600">
-                    {farm.verificationStatus}
+                    {membership?.role ?? 'member'}
                   </span>
                 </div>
                 <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
@@ -166,9 +296,92 @@ export default function FarmsPage() {
                     </span>
                   ))}
                 </div>
+                <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                  {membership?.role === 'owner' ? (
+                    <>
+                      <button
+                        type="button"
+                        disabled={actionLoading === `code-${farm.id}`}
+                        onClick={() => {
+                          if (!user) return
+                          runFarmAction(`code-${farm.id}`, async () => {
+                            await regenerateFarmJoinCode(user.uid, farm)
+                            return 'Join code regenerated. The old code no longer works.'
+                          })
+                        }}
+                        className="btn-secondary justify-center px-4 py-2 text-sm"
+                      >
+                        {actionLoading === `code-${farm.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                        New code
+                      </button>
+                      <button
+                        type="button"
+                        disabled={actionLoading === `index-${farm.id}`}
+                        onClick={() => {
+                          if (!user) return
+                          runFarmAction(`index-${farm.id}`, async () => {
+                            await refreshFarmSearchIndex(user.uid, farm)
+                            return 'Farm search listing refreshed.'
+                          })
+                        }}
+                        className="btn-secondary justify-center px-4 py-2 text-sm"
+                      >
+                        {actionLoading === `index-${farm.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                        Search listing
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={!membership || actionLoading === `leave-${farm.id}`}
+                      onClick={() => {
+                        if (!user || !membership || !window.confirm(`Leave ${farm.name}?`)) return
+                        runFarmAction(`leave-${farm.id}`, async () => {
+                          await leaveFarm(user.uid, membership)
+                          return `You left ${farm.name}.`
+                        })
+                      }}
+                      className="btn-secondary justify-center px-4 py-2 text-sm sm:col-span-2"
+                    >
+                      {actionLoading === `leave-${farm.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+                      Leave farm
+                    </button>
+                  )}
+                </div>
               </article>
             ))}
           </div>
+        )}
+
+        {accessRequests.length > 0 && (
+          <section className="mt-8">
+            <h2 className="mb-3 text-xl font-extrabold text-primary-900">Your access requests</h2>
+            <div className="grid gap-3 md:grid-cols-2">
+              {accessRequests.map((request) => (
+                <article key={request.id} className="surface rounded-2xl p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-extrabold text-primary-900">{request.farmName}</h3>
+                      <p className="mt-1 text-sm text-field-soil">{request.farmAddress}</p>
+                    </div>
+                    <span
+                      className={`rounded-full border px-3 py-1 text-xs font-bold uppercase ${
+                        request.status === 'approved'
+                          ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                          : request.status === 'denied'
+                            ? 'border-rose-200 bg-rose-50 text-rose-800'
+                            : request.status === 'expired'
+                              ? 'border-slate-200 bg-slate-50 text-slate-700'
+                              : 'border-amber-200 bg-amber-50 text-amber-800'
+                      }`}
+                    >
+                      {request.status}
+                    </span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
         )}
       </div>
     </main>

@@ -47,7 +47,7 @@ export default function OnboardingPage() {
             <p className="eyebrow">Farm setup</p>
             <h1 className="mt-4 text-3xl font-extrabold text-primary-900 sm:text-4xl">Connect your first farm</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-field-soil">
-              Create a farm for your operation or join an existing farm with its six-character code.
+              Create a farm for your operation, join with a six-character code, or request owner approval.
             </p>
           </div>
 
