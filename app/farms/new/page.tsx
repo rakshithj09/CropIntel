@@ -5,8 +5,9 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
+import AccountMenu from '@/components/AccountMenu'
 import FarmSetupForm from '@/components/FarmSetupForm'
-import { signOutUser, subscribeToAuth } from '@/src/lib/auth'
+import { subscribeToAuth } from '@/src/lib/auth'
 import type { User } from 'firebase/auth'
 
 export default function NewFarmPage() {
@@ -44,15 +45,13 @@ export default function NewFarmPage() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  const handleSignOut = async () => {
-    await signOutUser()
-    router.replace('/login')
-  }
-
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary-700" aria-label="Loading" />
+      <main className="flex min-h-screen items-center justify-center px-4">
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-white/70 bg-surface/70 px-6 py-5 text-center shadow-sm backdrop-blur">
+          <Loader2 className="h-8 w-8 animate-spin text-primary-700" aria-label="Loading" />
+          <p className="text-sm font-semibold text-ink-soft">Loading your account...</p>
+        </div>
       </main>
     )
   }
@@ -98,9 +97,7 @@ export default function NewFarmPage() {
             ))}
           </div>
 
-          <button type="button" onClick={handleSignOut} className="btn-secondary px-4 py-2 text-sm">
-            Sign out
-          </button>
+          <AccountMenu user={user} />
         </nav>
       </header>
 
