@@ -39,9 +39,6 @@ export default function AccountMenu({ user, loading = false }: AccountMenuProps)
   const email = user?.email?.trim() || 'No email on file'
   const name = getAccountName(user)
   const initials = useMemo(() => getInitials(name, email), [name, email])
-  const photoStyle = user?.photoURL
-    ? { backgroundImage: `url(${JSON.stringify(user.photoURL)})` }
-    : undefined
 
   useEffect(() => {
     if (!open) return
@@ -96,18 +93,14 @@ export default function AccountMenu({ user, loading = false }: AccountMenuProps)
         onClick={() => setOpen((current) => !current)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex min-h-[44px] max-w-[15rem] touch-manipulation items-center gap-2 rounded-full border border-ink/10 bg-surface/80 px-2 py-1.5 text-left shadow-sm backdrop-blur transition hover:border-leaf/30 hover:bg-white focus:outline-none focus:ring-4 focus:ring-primary-200/60 sm:max-w-[18rem] sm:pr-3"
+        aria-label={`Open account menu for ${name}`}
+        className="flex min-h-[44px] touch-manipulation items-center gap-1.5 rounded-full border border-ink/10 bg-surface/80 px-1.5 py-1.5 text-left shadow-sm backdrop-blur transition hover:border-leaf/30 hover:bg-white focus:outline-none focus:ring-4 focus:ring-primary-200/60"
       >
         <span
           aria-hidden="true"
-          style={photoStyle}
-          className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-ink bg-cover bg-center text-sm font-extrabold text-white"
+          className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-ink text-sm font-extrabold text-white"
         >
-          {!user?.photoURL && initials}
-        </span>
-        <span className="hidden min-w-0 sm:block">
-          <span className="block truncate text-sm font-bold leading-4 text-ink">{name}</span>
-          <span className="block truncate text-xs font-medium leading-4 text-ink-soft">{email}</span>
+          {initials}
         </span>
         <ChevronDown className={`h-4 w-4 shrink-0 text-ink-soft transition ${open ? 'rotate-180' : ''}`} />
       </button>
@@ -121,10 +114,9 @@ export default function AccountMenu({ user, loading = false }: AccountMenuProps)
             <div className="flex items-center gap-3">
               <span
                 aria-hidden="true"
-                style={photoStyle}
-                className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-ink bg-cover bg-center text-sm font-extrabold text-white"
+                className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-ink text-sm font-extrabold text-white"
               >
-                {!user?.photoURL && initials}
+                {initials}
               </span>
               <div className="min-w-0">
                 <p className="truncate text-sm font-extrabold text-ink">{name}</p>

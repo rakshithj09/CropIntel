@@ -82,9 +82,43 @@ export default function ProfilePage() {
             <span className="font-display truncate text-lg font-extrabold tracking-tight text-ink">CropIntel</span>
           </Link>
 
+          <div className="hidden items-center gap-8 md:flex">
+            {[
+              { label: 'Diagnosis', href: '/diagnosis' },
+              { label: 'Saved checks', href: '/saved-checks' },
+              { label: 'Local risk', href: '/local-risk' },
+              { label: 'Farms', href: '/farms' },
+            ].map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="cropintel-menu-link font-mono text-sm font-medium text-ink-soft transition-colors hover:text-ink"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+
           <AccountMenu user={user} />
         </nav>
       </header>
+
+      <div className="mx-auto mb-6 grid max-w-5xl grid-cols-4 gap-2 rounded-full border border-white/70 bg-surface/60 p-1.5 shadow-sm backdrop-blur md:hidden">
+        {[
+          { label: 'Diagnosis', href: '/diagnosis' },
+          { label: 'Saved', href: '/saved-checks' },
+          { label: 'Risk', href: '/local-risk' },
+          { label: 'Farms', href: '/farms' },
+        ].map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="touch-manipulation font-mono flex min-h-[40px] items-center justify-center rounded-full px-2 py-2 text-center text-[11px] font-semibold text-ink-soft transition-all hover:bg-white/70 hover:text-ink sm:text-sm"
+          >
+            <span className="truncate">{item.label}</span>
+          </Link>
+        ))}
+      </div>
 
       <section className="surface mx-auto max-w-3xl rounded-2xl p-5 sm:p-8">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
