@@ -346,7 +346,7 @@ export default function GoogleMapComponent({
               
               <div className="border-t border-gray-200 pt-2 mt-2">
                 <p className="text-xs text-gray-500">
-                  <span className="font-semibold">Location:</span> {selectedReport.lat.toFixed(4)}, {selectedReport.lng.toFixed(4)}
+                  <span className="font-semibold">General area:</span> {selectedReport.location?.generalArea ?? 'Nearby'}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
                   <span className="font-semibold">Reported:</span> {new Date(selectedReport.date).toLocaleString()}

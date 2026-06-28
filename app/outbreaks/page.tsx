@@ -1,5 +1,5 @@
-import OutbreakMap from '@/components/OutbreakMap'
+import CropIntelApp from '@/components/CropIntelApp'
 
 export default function OutbreaksPage() {
-  return <OutbreakMap />
+  return <CropIntelApp initialView="outbreaks" />
 }

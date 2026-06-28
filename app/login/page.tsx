@@ -12,6 +12,10 @@ function getAuthErrorCode(error: unknown) {
   return typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : ''
 }
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback
+}
+
 export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
@@ -33,8 +37,8 @@ export default function LoginPage() {
         try {
           const farms = await getUserFarms(user.uid)
           router.replace(farms.length > 0 ? '/' : '/onboarding')
-        } catch (err: any) {
-          setError(err.message || 'Could not load your farm data.')
+        } catch (err: unknown) {
+          setError(getErrorMessage(err, 'Could not load your farm data.'))
           setCheckingAuth(false)
         }
       },
@@ -56,7 +60,7 @@ export default function LoginPage() {
       const user = await signInWithEmail(trimmedEmail, password)
       const farms = await getUserFarms(user.uid)
       router.replace(farms.length > 0 ? '/' : '/onboarding')
-    } catch (err: any) {
+    } catch (err: unknown) {
       const code = getAuthErrorCode(err)
       if (code === 'auth/user-not-found') {
         router.replace(`/signup?email=${encodeURIComponent(email.trim())}`)
@@ -68,7 +72,7 @@ export default function LoginPage() {
         return
       }
 
-      setError(err.message || 'Could not sign in. Check your email and password.')
+      setError(getErrorMessage(err, 'Could not sign in. Check your email and password.'))
     } finally {
       setLoading(false)
     }
@@ -87,13 +91,13 @@ export default function LoginPage() {
       const trimmedEmail = email.trim()
       await resetPassword(trimmedEmail)
       setMessage(`Password reset email sent to ${trimmedEmail}.`)
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (getAuthErrorCode(err) === 'auth/user-not-found') {
         router.replace(`/signup?email=${encodeURIComponent(email.trim())}`)
         return
       }
 
-      setError(err.message || 'Could not send password reset email.')
+      setError(getErrorMessage(err, 'Could not send password reset email.'))
     } finally {
       setLoading(false)
     }
