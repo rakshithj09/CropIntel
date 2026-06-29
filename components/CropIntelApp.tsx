@@ -446,7 +446,7 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
       }
 
       const rawPayload = parsePredictionResponse(data)
-      const filtered = applyRegionalFilter(rawPayload)
+      const filtered = applyRegionalPrior(rawPayload, cropToUse, selectedFarm.stateCode)
       const merged = normalizePredictionPayload({ ...rawPayload, ...filtered })
       setPrediction(merged)
 
