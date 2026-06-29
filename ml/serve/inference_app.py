@@ -143,6 +143,8 @@ _crop_id: dict = {"ready": False, "error": None, "lock": threading.Lock()}
 
 def _load_crop_id() -> None:
     from ml.config import MODELS_DIR
+    # Reset state so a reload can't leave a stale "ready" model active after failures.
+    _crop_id.update({"ready": False, "error": None, "version": None})
     mdir = MODELS_DIR / "crop_id"
     if not mdir.exists():
         _crop_id["error"] = "not installed"
