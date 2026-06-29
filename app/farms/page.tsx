@@ -5,7 +5,8 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Check, Loader2, LogOut, Plus, RefreshCw, RotateCcw, X } from 'lucide-react'
-import { signOutUser, subscribeToAuth } from '@/src/lib/auth'
+import AccountMenu from '@/components/AccountMenu'
+import { subscribeToAuth } from '@/src/lib/auth'
 import {
   approveFarmAccessRequest,
   denyFarmAccessRequest,
@@ -79,11 +80,6 @@ export default function FarmsPage() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  const handleSignOut = async () => {
-    await signOutUser()
-    router.replace('/login')
-  }
-
   const runFarmAction = async (key: string, action: () => Promise<string>) => {
     if (!user) return
     setActionLoading(key)
@@ -102,8 +98,11 @@ export default function FarmsPage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary-700" aria-label="Loading" />
+      <main className="flex min-h-screen items-center justify-center px-4">
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-white/70 bg-surface/70 px-6 py-5 text-center shadow-sm backdrop-blur">
+          <Loader2 className="h-8 w-8 animate-spin text-primary-700" aria-label="Loading" />
+          <p className="text-sm font-semibold text-ink-soft">Loading your account...</p>
+        </div>
       </main>
     )
   }
@@ -149,9 +148,7 @@ export default function FarmsPage() {
             ))}
           </div>
 
-          <button type="button" onClick={handleSignOut} className="btn-secondary px-4 py-2 text-sm">
-            Sign out
-          </button>
+          <AccountMenu user={user} />
         </nav>
       </header>
 
