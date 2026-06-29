@@ -160,6 +160,12 @@ def format_response(result: dict, quality_metrics: dict, crop: str,
         "meets_threshold": result["meets_threshold"],
         "not_in_catalog": farmer_verification["not_in_catalog"],
         "catalog_message": farmer_verification["recommendation"] if farmer_verification["not_in_catalog"] else "",
+        # Cross-crop gate (filled in by the inference service, which has every
+        # crop's model loaded). Defaults keep the response shape stable for the
+        # CLI path, which only loads the one selected crop's model.
+        "crop_mismatch": False,
+        "suggested_crop": None,
+        "suggested_confidence": None,
         "known_diseases": known_diseases,
         "farmer_verification": farmer_verification,
         "image_quality": quality_metrics,
