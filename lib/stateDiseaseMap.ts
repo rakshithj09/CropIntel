@@ -46,17 +46,23 @@ export const CROP_STATE_DISEASES: Record<string, Record<string, string[]>> = {
     SD: ['Common Rust', 'Gray Leaf Spot', 'Blight', 'Healthy'],
     ND: ['Common Rust', 'Gray Leaf Spot', 'Blight', 'Healthy'],
   },
+  // Names must match the soybean model's class_names exactly (Bacterial Pustule,
+  // Frogeye Leaf Spot, Rust, Sudden Death Syndrome, Target Leaf Spot, Yellow
+  // Mosaic, Healthy) — this list FILTERS predictions, so a name the model never
+  // emits (the old 'powdery_mildew') both matches nothing and silently drops
+  // valid diagnoses. Soybean rust is a southern-belt disease, so it's only
+  // listed for southern states.
   soybean: {
-    IA: ['powdery_mildew', 'Sudden Death Syndrome', 'Yellow Mosaic', 'Healthy'],
-    IL: ['powdery_mildew', 'Sudden Death Syndrome', 'Yellow Mosaic', 'Healthy'],
-    MN: ['powdery_mildew', 'Sudden Death Syndrome', 'Yellow Mosaic', 'Healthy'],
-    MO: ['powdery_mildew', 'Sudden Death Syndrome', 'Yellow Mosaic', 'Healthy'],
-    AR: ['powdery_mildew', 'Sudden Death Syndrome', 'Yellow Mosaic', 'Healthy'],
-    MS: ['powdery_mildew', 'Sudden Death Syndrome', 'Yellow Mosaic', 'Healthy'],
-    LA: ['powdery_mildew', 'Sudden Death Syndrome', 'Yellow Mosaic', 'Healthy'],
-    IN: ['powdery_mildew', 'Sudden Death Syndrome', 'Yellow Mosaic', 'Healthy'],
-    OH: ['powdery_mildew', 'Sudden Death Syndrome', 'Yellow Mosaic', 'Healthy'],
-    NE: ['powdery_mildew', 'Sudden Death Syndrome', 'Yellow Mosaic', 'Healthy'],
+    IA: ['Frogeye Leaf Spot', 'Sudden Death Syndrome', 'Bacterial Pustule', 'Target Leaf Spot', 'Yellow Mosaic', 'Healthy'],
+    IL: ['Frogeye Leaf Spot', 'Sudden Death Syndrome', 'Bacterial Pustule', 'Target Leaf Spot', 'Yellow Mosaic', 'Healthy'],
+    MN: ['Frogeye Leaf Spot', 'Sudden Death Syndrome', 'Bacterial Pustule', 'Target Leaf Spot', 'Yellow Mosaic', 'Healthy'],
+    IN: ['Frogeye Leaf Spot', 'Sudden Death Syndrome', 'Bacterial Pustule', 'Target Leaf Spot', 'Yellow Mosaic', 'Healthy'],
+    OH: ['Frogeye Leaf Spot', 'Sudden Death Syndrome', 'Bacterial Pustule', 'Target Leaf Spot', 'Yellow Mosaic', 'Healthy'],
+    NE: ['Frogeye Leaf Spot', 'Sudden Death Syndrome', 'Bacterial Pustule', 'Target Leaf Spot', 'Yellow Mosaic', 'Healthy'],
+    MO: ['Frogeye Leaf Spot', 'Sudden Death Syndrome', 'Bacterial Pustule', 'Target Leaf Spot', 'Yellow Mosaic', 'Rust', 'Healthy'],
+    AR: ['Frogeye Leaf Spot', 'Sudden Death Syndrome', 'Bacterial Pustule', 'Target Leaf Spot', 'Yellow Mosaic', 'Rust', 'Healthy'],
+    MS: ['Frogeye Leaf Spot', 'Sudden Death Syndrome', 'Bacterial Pustule', 'Target Leaf Spot', 'Yellow Mosaic', 'Rust', 'Healthy'],
+    LA: ['Frogeye Leaf Spot', 'Sudden Death Syndrome', 'Bacterial Pustule', 'Target Leaf Spot', 'Yellow Mosaic', 'Rust', 'Healthy'],
   },
   wheat: {
     KS: ['Stripe (Yellow) Rust', 'Leaf Rust', 'Powdery Mildew', 'Healthy'],

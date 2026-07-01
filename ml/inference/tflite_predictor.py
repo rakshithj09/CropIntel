@@ -83,11 +83,26 @@ class TFLitePredictor:
         
         self.class_names = self.metadata["class_names"]
         self.input_shape = tuple(self.metadata["input_shape"])
-        
+
         # Get input/output details (only for TFLite)
         if not self.use_keras:
             self.input_details = self.interpreter.get_input_details()
             self.output_details = self.interpreter.get_output_details()
+
+        # Fail loudly if the loaded weights and the label map disagree on how
+        # many classes there are. A silent mismatch here is exactly how a stale
+        # or wrong model mispredicts: argmax lands on an index the label map
+        # can't explain, or maps to the wrong disease. Refuse to serve it.
+        if self.use_keras:
+            model_units = int(self.model.output_shape[-1])
+        else:
+            model_units = int(self.output_details[0]["shape"][-1])
+        if model_units != len(self.class_names):
+            raise ValueError(
+                f"{crop} model {self.version} outputs {model_units} classes but its "
+                f"label map has {len(self.class_names)} ({self.class_names}). "
+                "Refusing to serve a model whose weights and label map disagree."
+            )
     
     def preprocess_image(self, image: Image.Image) -> np.ndarray:
         """

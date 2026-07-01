@@ -163,6 +163,7 @@ def _load_crop_id() -> None:
         if keras_p.exists() and not (force_tflite and tfl_p.exists()):
             model = tf.keras.models.load_model(keras_p)
             kind = "keras"
+            units = int(model.output_shape[-1])
             def _infer(arr):
                 return model.predict(arr, verbose=0)[0]
         elif tfl_p.exists():
@@ -170,12 +171,22 @@ def _load_crop_id() -> None:
             interp.allocate_tensors()
             di, do = interp.get_input_details()[0], interp.get_output_details()[0]
             kind = "tflite"
+            units = int(do["shape"][-1])
             def _infer(arr):
                 interp.set_tensor(di["index"], arr.astype(di["dtype"]))
                 interp.invoke()
                 return interp.get_tensor(do["index"])[0]
         else:
             _crop_id["error"] = "no model file"
+            return
+        # A mismatch here means argmax would index the wrong crop name — the
+        # exact failure mode where a leaf gets labeled the wrong crop. Refuse it.
+        if units != len(class_names):
+            _crop_id["error"] = (
+                f"class count mismatch: model outputs {units} but metadata lists "
+                f"{len(class_names)} ({class_names})"
+            )
+            log.error("crop_id NOT loaded: %s", _crop_id["error"])
             return
         _crop_id.update({"infer": _infer, "class_names": class_names,
                          "input_shape": input_shape, "version": ver,
