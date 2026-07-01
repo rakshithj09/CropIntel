@@ -10,8 +10,12 @@ import { createSecureResponse } from '@/lib/security/headers'
 
 const INFERENCE_URL = process.env.INFERENCE_URL || 'http://127.0.0.1:8000'
 
+type InferenceReadiness =
+  | { ready: boolean; error?: string }
+  | Record<string, unknown>
+
 export async function GET() {
-  let inference: any = null
+  let inference: InferenceReadiness | null = null
   let healthy = false
 
   try {

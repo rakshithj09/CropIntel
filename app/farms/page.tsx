@@ -29,6 +29,16 @@ function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback
 }
 
+function getRequesterLabel(request: FarmAccessRequest) {
+  const name = request.requesterName?.trim()
+  const email = request.requesterEmail?.trim()
+
+  if (name && email) return `${name} (${email})`
+  if (email) return email
+  if (name) return `${name} (${request.requesterId})`
+  return request.requesterId
+}
+
 export default function FarmsPage() {
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
@@ -211,7 +221,7 @@ export default function FarmsPage() {
                     <div>
                       <p className="text-sm font-bold text-primary-900">{request.farmName}</p>
                       <p className="mt-1 text-sm text-field-soil">
-                        Requester ID: <span className="font-mono">{request.requesterId}</span>
+                        Requester: <span className="font-semibold text-primary-900">{getRequesterLabel(request)}</span>
                       </p>
                       <span className="mt-2 inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-bold uppercase text-amber-800">
                         {request.status}

@@ -1,14 +1,14 @@
 'use client'
 
 import { Download, FileJson, Share2, Table } from 'lucide-react'
+import type { PredictionPayload } from '@/lib/stateDiseaseMap'
 
 interface ExportResultsProps {
-  prediction: any
+  prediction: PredictionPayload
   crop: string
-  imageUrl: string | null
 }
 
-export default function ExportResults({ prediction, crop, imageUrl }: ExportResultsProps) {
+export default function ExportResults({ prediction, crop }: ExportResultsProps) {
   const exportToJSON = () => {
     const data = {
       crop,
@@ -32,7 +32,7 @@ export default function ExportResults({ prediction, crop, imageUrl }: ExportResu
 
   const exportToCSV = () => {
     const headers = ['Likely issue', 'Match strength (%)', 'Looks healthy']
-    const rows = prediction.all_predictions.map((p: any) => [
+    const rows = prediction.all_predictions.map((p) => [
       p.disease,
       p.confidence.toFixed(2),
       prediction.is_healthy ? 'Yes' : 'No'
@@ -40,7 +40,7 @@ export default function ExportResults({ prediction, crop, imageUrl }: ExportResu
 
     const csv = [
       headers.join(','),
-      ...rows.map((row: any[]) => row.join(','))
+      ...rows.map((row) => row.join(','))
     ].join('\n')
 
     const blob = new Blob([csv], { type: 'text/csv' })

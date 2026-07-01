@@ -50,6 +50,11 @@ const INFERENCE_URL = process.env.INFERENCE_URL || 'http://127.0.0.1:8000'
 /** Upstream timeout — model inference is fast; this guards a hung service. */
 const INFERENCE_TIMEOUT_MS = 30_000
 
+type InferenceResponse = {
+  error?: string
+  [key: string]: unknown
+}
+
 /**
  * Validate file content by checking MIME type
  * Additional security layer beyond client-side validation
@@ -169,7 +174,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    let result: any
+    let result: InferenceResponse
     try {
       result = await upstream.json()
     } catch {
@@ -219,7 +224,7 @@ export async function POST(request: NextRequest) {
     })
 
     return response
-  } catch (error: any) {
+  } catch (error: unknown) {
     // ========== ERROR HANDLING ==========
     // Log detailed error server-side but return generic message to client
     // OWASP: Prevent information disclosure

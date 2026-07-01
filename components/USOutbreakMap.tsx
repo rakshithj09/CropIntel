@@ -7,7 +7,6 @@ import { createPortal } from 'react-dom'
 import {
   AlertTriangle,
   Camera,
-  CheckCircle2,
   ChevronDown,
   Flag,
   Loader2,
@@ -16,11 +15,19 @@ import {
   Minimize2,
   Save,
   ThumbsUp,
+  Trash2,
   X,
 } from 'lucide-react'
-import type { OutbreakReport, ReportSeverity, ReportStatus } from '@/lib/outbreakReport'
-import type { CreateCropTroubleReportInput } from '@/src/lib/cropTroubleReports'
+import type { OutbreakReport } from '@/lib/outbreakReport'
+import {
+  CROP_TROUBLE_REPORT_REASONS,
+  type CreateCropTroubleReportInput,
+  type CropTroubleReportReason,
+} from '@/src/lib/cropTroubleReports'
 import type { Farm } from '@/src/lib/types'
+
+type ReportSeverity = OutbreakReport['severity']
+type ReportStatus = OutbreakReport['status']
 
 const GoogleMapComponent = dynamic(() => import('./GoogleMap'), {
   ssr: false,
@@ -42,8 +49,8 @@ interface USOutbreakMapProps {
   reportsError?: string | null
   onReportSubmit?: (report: Omit<CreateCropTroubleReportInput, 'userId' | 'farmId'>) => Promise<void>
   onSeeingToo?: (reportId: string) => Promise<void>
-  onReportPost?: (reportId: string) => Promise<void>
-  onStatusUpdate?: (reportId: string, status: Exclude<ReportStatus, 'new'>) => Promise<void>
+  onReportPost?: (reportId: string, reason: CropTroubleReportReason, summary: string) => Promise<void>
+  onDeleteReport?: (reportId: string) => Promise<void>
 }
 
 type ReportFormData = {
@@ -62,6 +69,21 @@ const initialFormData: ReportFormData = {
   description: '',
   sharePhoto: false,
   photoFile: null,
+}
+
+const reportReasonLabels: Record<CropTroubleReportReason, string> = {
+  false_or_misleading: 'False or misleading',
+  unsafe_advice: 'Unsafe advice',
+  spam_or_duplicate: 'Spam or duplicate',
+  private_information: 'Private information',
+  harassment_or_abuse: 'Harassment or abuse',
+  other: 'Other',
+}
+
+type ModerationDraft = {
+  report: OutbreakReport
+  reason: CropTroubleReportReason
+  summary: string
 }
 
 function triggerMapResize(map: google.maps.Map | null) {
@@ -163,7 +185,7 @@ export default function USOutbreakMap({
   onReportSubmit,
   onSeeingToo,
   onReportPost,
-  onStatusUpdate,
+  onDeleteReport,
 }: USOutbreakMapProps) {
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [showReportForm, setShowReportForm] = useState(false)
@@ -171,6 +193,9 @@ export default function USOutbreakMap({
   const [submitting, setSubmitting] = useState(false)
   const [formMessage, setFormMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [busyReportId, setBusyReportId] = useState<string | null>(null)
+  const [confirmingDeleteReportId, setConfirmingDeleteReportId] = useState<string | null>(null)
+  const [moderationDraft, setModerationDraft] = useState<ModerationDraft | null>(null)
+  const [moderationMessage, setModerationMessage] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
   const mapCardRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<google.maps.Map | null>(null)
@@ -252,24 +277,27 @@ export default function USOutbreakMap({
   }, [expanded, exitAllFullscreen])
 
   useEffect(() => {
-    if (!layoutFullscreen && !browserFullscreen && !showReportForm) return
+    if (!layoutFullscreen && !browserFullscreen && !showReportForm && !moderationDraft) return
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     return () => {
       document.body.style.overflow = prev
     }
-  }, [layoutFullscreen, browserFullscreen, showReportForm])
+  }, [layoutFullscreen, browserFullscreen, moderationDraft, showReportForm])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (showReportForm) closeModal()
+        if (moderationDraft) {
+          setModerationDraft(null)
+          setModerationMessage(null)
+        } else if (showReportForm) closeModal()
         else if (expanded) void exitAllFullscreen()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [closeModal, expanded, exitAllFullscreen, showReportForm])
+  }, [closeModal, expanded, exitAllFullscreen, moderationDraft, showReportForm])
 
   useEffect(() => {
     return () => {
@@ -339,8 +367,26 @@ export default function USOutbreakMap({
     try {
       await action()
       if (doneMessage) setFormMessage({ type: 'success', text: doneMessage })
+      return true
     } catch {
       setFormMessage({ type: 'error', text: 'Could not update that report right now.' })
+      return false
+    } finally {
+      setBusyReportId(null)
+    }
+  }
+
+  const handleSubmitModerationReport = async () => {
+    if (!moderationDraft || !onReportPost) return
+
+    setModerationMessage(null)
+    setBusyReportId(moderationDraft.report.id)
+    try {
+      await onReportPost(moderationDraft.report.id, moderationDraft.reason, moderationDraft.summary)
+      setFormMessage({ type: 'success', text: 'Thanks. We will review it.' })
+      setModerationDraft(null)
+    } catch {
+      setModerationMessage('Could not submit that report right now.')
     } finally {
       setBusyReportId(null)
     }
@@ -398,9 +444,6 @@ export default function USOutbreakMap({
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
             <h3 className="text-lg font-bold text-primary-900">Nearby Crop Trouble</h3>
-            <p className="mt-1 text-sm text-field-soil">
-              Recent anonymous reports from {stateCode || 'your state'}.
-            </p>
           </div>
           {loadingReports && <Loader2 className="h-5 w-5 animate-spin text-primary-700" aria-label="Loading reports" />}
         </div>
@@ -477,65 +520,84 @@ export default function USOutbreakMap({
                   </dl>
 
                   {report.description && (
-                    <p className="mt-3 rounded-lg bg-white/70 p-3 text-sm leading-6 text-ink-soft">
-                      {report.description}
-                    </p>
+                    <div className="mt-3">
+                      <p className="mb-2 text-sm font-bold text-primary-900">Notes</p>
+                      <p className="rounded-lg bg-white/70 p-3 text-sm leading-6 text-ink-soft">
+                        {report.description}
+                      </p>
+                    </div>
                   )}
 
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() =>
-                        onSeeingToo &&
-                        void runReportAction(report.id, () => onSeeingToo(report.id), 'Thanks. We counted it.')
-                      }
-                      className="btn-secondary bg-white px-3 py-2 text-sm"
-                    >
-                      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ThumbsUp className="h-4 w-4" />}
-                      Seeing this too ({report.seeingTooCount})
-                    </button>
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() =>
-                        onReportPost &&
-                        void runReportAction(report.id, () => onReportPost(report.id), 'Thanks. We will review it.')
-                      }
-                      className="btn-secondary bg-white px-3 py-2 text-sm"
-                    >
-                      <Flag className="h-4 w-4" />
-                      Report this post
-                    </button>
-                    {isOwner && report.status !== 'confirmed' && (
+                  {isOwner ? (
+                    <div className="mt-4">
+                      {confirmingDeleteReportId === report.id ? (
+                        <div className="rounded-xl border border-rose-200 bg-rose-50 p-3">
+                          <p className="text-sm font-bold text-rose-950">Delete this alert?</p>
+                          <p className="mt-1 text-sm text-rose-900">This removes the alert for everyone.</p>
+                          <div className="mt-3 grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => setConfirmingDeleteReportId(null)}
+                              className="btn-secondary justify-center bg-white px-3 py-2 text-sm"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={async () => {
+                                if (!onDeleteReport) return
+                                const succeeded = await runReportAction(report.id, () => onDeleteReport(report.id), 'Alert deleted.')
+                                if (succeeded) setConfirmingDeleteReportId(null)
+                              }}
+                              className="btn-primary justify-center px-3 py-2 text-sm"
+                            >
+                              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => setConfirmingDeleteReportId(report.id)}
+                          className="btn-secondary bg-white px-3 py-2 text-sm"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Delete alert
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="mt-4 flex flex-wrap gap-2">
                       <button
                         type="button"
                         disabled={busy}
                         onClick={() =>
-                          onStatusUpdate &&
-                          void runReportAction(report.id, () => onStatusUpdate(report.id, 'confirmed'))
+                          onSeeingToo &&
+                          void runReportAction(report.id, () => onSeeingToo(report.id), 'Thanks. We counted it.')
                         }
                         className="btn-secondary bg-white px-3 py-2 text-sm"
                       >
-                        <CheckCircle2 className="h-4 w-4" />
-                        Mark confirmed
+                        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ThumbsUp className="h-4 w-4" />}
+                        Seeing this too ({report.seeingTooCount})
                       </button>
-                    )}
-                    {isOwner && report.status !== 'resolved' && (
                       <button
                         type="button"
                         disabled={busy}
-                        onClick={() =>
-                          onStatusUpdate &&
-                          void runReportAction(report.id, () => onStatusUpdate(report.id, 'resolved'))
-                        }
+                        onClick={() => {
+                          setModerationMessage(null)
+                          setModerationDraft({ report, reason: 'false_or_misleading', summary: '' })
+                        }}
                         className="btn-secondary bg-white px-3 py-2 text-sm"
                       >
-                        <CheckCircle2 className="h-4 w-4" />
-                        Mark resolved
+                        <Flag className="h-4 w-4" />
+                        Report
                       </button>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </article>
               )
             })}
@@ -648,11 +710,11 @@ export default function USOutbreakMap({
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-bold text-primary-900">Field notes</label>
+                <label className="mb-2 block text-sm font-bold text-primary-900">Notes</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value.slice(0, 700) })}
-                  placeholder="What part of the field is affected? When did you notice it?"
+                  placeholder="Add details about the affected area and when you noticed it."
                   rows={4}
                   className="field-input resize-none py-2.5"
                 />
@@ -694,6 +756,116 @@ export default function USOutbreakMap({
               >
                 {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
                 {submitting ? 'Sharing...' : 'Share report'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {mounted && moderationDraft && createPortal(
+        <div className="fixed inset-0 z-[90000] flex items-center justify-center p-3 sm:p-4">
+          <button
+            type="button"
+            aria-label="Close report dialog"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => {
+              if (busyReportId === moderationDraft.report.id) return
+              setModerationDraft(null)
+              setModerationMessage(null)
+            }}
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="moderation-report-title"
+            className="relative z-10 w-full max-w-md rounded-2xl border border-field-soil/10 bg-white shadow-2xl"
+          >
+            <div className="flex items-start justify-between gap-3 border-b border-field-soil/10 px-4 py-4 sm:px-5">
+              <div>
+                <h2 id="moderation-report-title" className="text-xl font-bold text-primary-950">Report alert</h2>
+                <p className="mt-2 text-sm leading-5 text-field-soil">Tell us what needs review. Your report is stored for moderation.</p>
+              </div>
+              <button
+                type="button"
+                disabled={busyReportId === moderationDraft.report.id}
+                onClick={() => {
+                  setModerationDraft(null)
+                  setModerationMessage(null)
+                }}
+                className="rounded-full p-2 text-field-soil transition hover:bg-field-cream hover:text-primary-900 disabled:opacity-50"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 px-4 py-4 sm:px-5">
+              {moderationMessage && (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-900">
+                  {moderationMessage}
+                </div>
+              )}
+
+              <div>
+                <label className="mb-2 block text-sm font-bold text-primary-900">Reason</label>
+                <div className="grid gap-2">
+                  {CROP_TROUBLE_REPORT_REASONS.map((reason) => (
+                    <label
+                      key={reason}
+                      className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-sm font-semibold transition ${
+                        moderationDraft.reason === reason
+                          ? 'border-ink bg-ink text-white'
+                          : 'border-field-soil/10 bg-field-cream text-ink hover:bg-white'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="moderation-reason"
+                        value={reason}
+                        checked={moderationDraft.reason === reason}
+                        onChange={() => setModerationDraft({ ...moderationDraft, reason })}
+                        className="sr-only"
+                      />
+                      {reportReasonLabels[reason]}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-bold text-primary-900">Summary optional</label>
+                <textarea
+                  value={moderationDraft.summary}
+                  onChange={(event) => setModerationDraft({ ...moderationDraft, summary: event.target.value.slice(0, 280) })}
+                  placeholder="Add context for the review team."
+                  rows={3}
+                  className="field-input resize-none py-2.5"
+                />
+                <p className="mt-1 text-xs font-semibold text-field-soil">{moderationDraft.summary.length}/280</p>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 border-t border-field-soil/10 bg-white px-4 py-3 sm:flex-row sm:px-5">
+              <button
+                type="button"
+                disabled={busyReportId === moderationDraft.report.id}
+                onClick={() => {
+                  setModerationDraft(null)
+                  setModerationMessage(null)
+                }}
+                className="btn-secondary w-full sm:w-auto"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={busyReportId === moderationDraft.report.id}
+                onClick={() => void handleSubmitModerationReport()}
+                className="btn-primary w-full sm:flex-1"
+              >
+                {busyReportId === moderationDraft.report.id ? <Loader2 className="h-5 w-5 animate-spin" /> : <Flag className="h-5 w-5" />}
+                Submit report
               </button>
             </div>
           </div>

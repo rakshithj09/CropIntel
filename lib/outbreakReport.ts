@@ -1,7 +1,7 @@
 export type ReportSeverity = 'low' | 'medium' | 'high'
 export type ReportStatus = 'new' | 'confirmed' | 'resolved'
 
-export interface CropTroubleReport {
+export interface OutbreakReport {
   id: string
   userId: string
   farmId: string | null
@@ -29,4 +29,4 @@ export interface CropTroubleReport {
   moderationCount: number
 }
 
-export type OutbreakReport = CropTroubleReport
+export type CropTroubleReport = OutbreakReport
