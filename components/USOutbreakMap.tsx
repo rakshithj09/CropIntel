@@ -775,10 +775,15 @@ export default function USOutbreakMap({
               setModerationMessage(null)
             }}
           />
-          <div className="relative z-10 w-full max-w-md rounded-2xl border border-field-soil/10 bg-white shadow-2xl">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="moderation-report-title"
+            className="relative z-10 w-full max-w-md rounded-2xl border border-field-soil/10 bg-white shadow-2xl"
+          >
             <div className="flex items-start justify-between gap-3 border-b border-field-soil/10 px-4 py-4 sm:px-5">
               <div>
-                <h2 className="text-xl font-bold text-primary-950">Report alert</h2>
+                <h2 id="moderation-report-title" className="text-xl font-bold text-primary-950">Report alert</h2>
                 <p className="mt-2 text-sm leading-5 text-field-soil">Tell us what needs review. Your report is stored for moderation.</p>
               </div>
               <button
