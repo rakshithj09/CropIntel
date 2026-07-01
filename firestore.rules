@@ -125,6 +125,7 @@ service cloud.firestore {
       request.resource.data.requestedAt == request.time &&
       request.resource.data.requestExpiresAt is timestamp &&
       request.resource.data.requestExpiresAt > request.time &&
+      request.resource.data.requestExpiresAt <= request.time + duration.value(30, 'd') &&
       !exists(/databases/$(database)/documents/farmMembers/$(memberId(farmId, requesterId))) &&
       exists(/databases/$(database)/documents/farmSearchIndex/$(farmId)) &&
       get(/databases/$(database)/documents/farmSearchIndex/$(farmId)).data.ownerId == request.resource.data.ownerId &&
