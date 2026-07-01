@@ -704,11 +704,11 @@ export default function USOutbreakMap({
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-bold text-primary-900">Field notes</label>
+                <label className="mb-2 block text-sm font-bold text-primary-900">Notes</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value.slice(0, 700) })}
-                  placeholder="What part of the field is affected? When did you notice it?"
+                  placeholder="Add details about the affected area and when you noticed it."
                   rows={4}
                   className="field-input resize-none py-2.5"
                 />
