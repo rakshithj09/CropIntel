@@ -20,7 +20,7 @@ export function deriveAccessRequestStatus(
   nowMs = Date.now()
 ): FarmAccessRequestStatus {
   if (status !== 'pending') return status
-  return timestampToMillis(requestExpiresAt) <= nowMs ? 'expired' : 'pending'
+  return timestampToMillis(requestExpiresAt) < nowMs ? 'expired' : 'pending'
 }
 
 export function withDisplayAccessRequestStatus(request: FarmAccessRequest, nowMs = Date.now()): FarmAccessRequest {
