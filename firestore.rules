@@ -121,15 +121,71 @@ service cloud.firestore {
       return farmId + '_' + userId;
     }
 
+    function requestId(farmId, userId) {
+      return farmId + '_' + userId;
+    }
+
     function isFarmMember(farmId) {
       return signedIn() &&
         exists(/databases/$(database)/documents/farmMembers/$(memberId(farmId, request.auth.uid)));
+    }
+
+    function isFarmOwner(farmId) {
+      return signedIn() &&
+        get(/databases/$(database)/documents/farms/$(farmId)).data.ownerId == request.auth.uid;
     }
 
     function joinCodeAllowsMembership(data) {
       return data.joinCodeUsed is string &&
         exists(/databases/$(database)/documents/farmJoinCodes/$(data.joinCodeUsed)) &&
         get(/databases/$(database)/documents/farmJoinCodes/$(data.joinCodeUsed)).data.farmId == data.farmId;
+    }
+
+    function approvedRequestAllowsMembership(data) {
+      return data.approvedRequestId is string &&
+        exists(/databases/$(database)/documents/farmAccessRequests/$(data.approvedRequestId)) &&
+        getAfter(/databases/$(database)/documents/farmAccessRequests/$(data.approvedRequestId)).data.farmId == data.farmId &&
+        getAfter(/databases/$(database)/documents/farmAccessRequests/$(data.approvedRequestId)).data.requesterId == data.userId &&
+        getAfter(/databases/$(database)/documents/farmAccessRequests/$(data.approvedRequestId)).data.ownerId == request.auth.uid &&
+        getAfter(/databases/$(database)/documents/farmAccessRequests/$(data.approvedRequestId)).data.status == 'approved';
+    }
+
+    function validFarmSearchIndex() {
+      return request.resource.data.keys().hasOnly([
+        'farmId', 'ownerId', 'name', 'address', 'stateCode', 'crops', 'searchTokens', 'updatedAt'
+      ]) &&
+      request.resource.data.farmId is string &&
+      request.resource.data.ownerId == request.auth.uid &&
+      isString(request.resource.data.name, 1, 120) &&
+      isString(request.resource.data.address, 1, 240) &&
+      validStateCode(request.resource.data.stateCode) &&
+      validCropList(request.resource.data.crops) &&
+      request.resource.data.searchTokens is list &&
+      request.resource.data.searchTokens.size() >= 1 &&
+      request.resource.data.searchTokens.size() <= 40 &&
+      request.resource.data.updatedAt == request.time;
+    }
+
+    function validAccessRequestCreate(farmId, requesterId) {
+      return request.resource.data.keys().hasOnly([
+        'farmId', 'requesterId', 'ownerId', 'status', 'farmName', 'farmStateCode',
+        'farmAddress', 'requestedAt', 'requestExpiresAt'
+      ]) &&
+      farmId == request.resource.data.farmId &&
+      requesterId == request.resource.data.requesterId &&
+      requesterId == request.auth.uid &&
+      request.resource.data.status == 'pending' &&
+      request.resource.data.requestedAt == request.time &&
+      request.resource.data.requestExpiresAt is timestamp &&
+      request.resource.data.requestExpiresAt > request.time &&
+      request.resource.data.requestExpiresAt <= request.time + duration.value(30, 'd') &&
+      !exists(/databases/$(database)/documents/farmMembers/$(memberId(farmId, requesterId))) &&
+      exists(/databases/$(database)/documents/farmSearchIndex/$(farmId)) &&
+      get(/databases/$(database)/documents/farmSearchIndex/$(farmId)).data.ownerId == request.resource.data.ownerId &&
+      get(/databases/$(database)/documents/farmSearchIndex/$(farmId)).data.name == request.resource.data.farmName &&
+      get(/databases/$(database)/documents/farmSearchIndex/$(farmId)).data.stateCode == request.resource.data.farmStateCode &&
+      get(/databases/$(database)/documents/farmSearchIndex/$(farmId)).data.address == request.resource.data.farmAddress &&
+      request.resource.data.ownerId != request.auth.uid;
     }
 
     match /users/{userId} {
@@ -151,7 +207,14 @@ service cloud.firestore {
     match /farms/{farmId} {
       allow read: if isFarmMember(farmId);
       allow create: if signedIn() && validFarmCreate();
-      allow update, delete: if false;
+      allow update: if isFarmOwner(farmId) &&
+        request.resource.data.diff(resource.data).changedKeys().hasOnly(['joinCode', 'joinCodeUpdatedAt']) &&
+        request.resource.data.joinCode.matches('^[A-Z2-9]{6}$') &&
+        request.resource.data.joinCodeUpdatedAt == request.time &&
+        existsAfter(/databases/$(database)/documents/farmJoinCodes/$(request.resource.data.joinCode)) &&
+        getAfter(/databases/$(database)/documents/farmJoinCodes/$(request.resource.data.joinCode)).data.farmId == farmId &&
+        getAfter(/databases/$(database)/documents/farmJoinCodes/$(request.resource.data.joinCode)).data.createdBy == request.auth.uid;
+      allow delete: if false;
     }
 
     match /farmJoinCodes/{joinCode} {
@@ -163,30 +226,81 @@ service cloud.firestore {
         request.resource.data.createdBy == request.auth.uid &&
         request.resource.data.createdAt == request.time &&
         getAfter(/databases/$(database)/documents/farms/$(request.resource.data.farmId)).data.ownerId == request.auth.uid;
-      allow update, delete: if false;
+      allow update: if false;
+      allow delete: if signedIn() &&
+        resource.data.farmId is string &&
+        get(/databases/$(database)/documents/farms/$(resource.data.farmId)).data.ownerId == request.auth.uid;
+    }
+
+    match /farmSearchIndex/{farmId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() &&
+        farmId == request.resource.data.farmId &&
+        validFarmSearchIndex() &&
+        getAfter(/databases/$(database)/documents/farms/$(farmId)).data.ownerId == request.auth.uid;
+      allow delete: if false;
+    }
+
+    match /farmAccessRequests/{accessRequestId} {
+      allow read: if signedIn() &&
+        (resource.data.requesterId == request.auth.uid || resource.data.ownerId == request.auth.uid);
+      allow create: if signedIn() &&
+        accessRequestId == requestId(request.resource.data.farmId, request.resource.data.requesterId) &&
+        validAccessRequestCreate(request.resource.data.farmId, request.resource.data.requesterId);
+      allow update: if signedIn() &&
+        (
+          (
+            resource.data.ownerId == request.auth.uid &&
+            resource.data.status == 'pending' &&
+            request.resource.data.diff(resource.data).changedKeys().hasOnly(['status', 'resolvedBy', 'resolvedAt']) &&
+            request.resource.data.status in ['approved', 'denied'] &&
+            request.resource.data.resolvedBy == request.auth.uid &&
+            request.resource.data.resolvedAt == request.time
+          ) ||
+          (
+            resource.data.requesterId == request.auth.uid &&
+            resource.data.status == 'pending' &&
+            request.time > resource.data.requestExpiresAt &&
+            request.resource.data.diff(resource.data).changedKeys().hasOnly(['status']) &&
+            request.resource.data.status == 'expired'
+          )
+        );
+      allow delete: if false;
     }
 
     match /farmMembers/{memberDocId} {
       allow read: if signedIn() && resource.data.userId == request.auth.uid;
       allow create: if signedIn() &&
-        request.resource.data.keys().hasOnly(['farmId', 'userId', 'role', 'joinedAt', 'joinCodeUsed']) &&
-        request.resource.data.userId == request.auth.uid &&
+        memberDocId == memberId(request.resource.data.farmId, request.resource.data.userId) &&
+        request.resource.data.keys().hasOnly(['farmId', 'userId', 'role', 'joinedAt', 'joinCodeUsed', 'approvedRequestId']) &&
         request.resource.data.joinedAt == request.time &&
         (
           (
             request.resource.data.role == 'owner' &&
+            request.resource.data.userId == request.auth.uid &&
             !('joinCodeUsed' in request.resource.data) &&
+            !('approvedRequestId' in request.resource.data) &&
             getAfter(/databases/$(database)/documents/farms/$(request.resource.data.farmId)).data.ownerId == request.auth.uid
           ) ||
           (
             request.resource.data.role == 'member' &&
+            request.resource.data.userId == request.auth.uid &&
+            !('approvedRequestId' in request.resource.data) &&
             joinCodeAllowsMembership(request.resource.data)
+          ) ||
+          (
+            request.resource.data.role == 'member' &&
+            isFarmOwner(request.resource.data.farmId) &&
+            !('joinCodeUsed' in request.resource.data) &&
+            approvedRequestAllowsMembership(request.resource.data)
           )
         );
       allow update: if signedIn() &&
         resource.data.userId == request.auth.uid &&
         request.resource.data.diff(resource.data).changedKeys().hasOnly(['joinedAt']);
-      allow delete: if signedIn() && resource.data.userId == request.auth.uid;
+      allow delete: if signedIn() &&
+        resource.data.userId == request.auth.uid &&
+        resource.data.role != 'owner';
     }
 
     match /diagnoses/{diagnosisId} {

@@ -10,12 +10,12 @@ import ImageUpload from '@/components/ImageUpload'
 import CropSelector from '@/components/CropSelector'
 import FarmSelector from '@/components/FarmSelector'
 import PredictionResults from '@/components/PredictionResults'
-import PredictionHistory from '@/components/PredictionHistory'
+import PredictionHistory, { savePredictionToHistory, type PredictionRecord } from '@/components/PredictionHistory'
 import ExportResults from '@/components/ExportResults'
 import Diagnosis from '@/components/Diagnosis'
 import NotificationSystem from '@/components/NotificationSystem'
 import HealthComparisonPanel from '@/components/HealthComparisonPanel'
-import { savePredictionToHistory, type PredictionRecord } from '@/components/PredictionHistory'
+import AccountMenu from '@/components/AccountMenu'
 import type { OutbreakReport, ReportStatus } from '@/lib/outbreakReport'
 import {
   applyRegionalPrior,
@@ -23,7 +23,7 @@ import {
   normalizePredictionPayload,
   type PredictionPayload,
 } from '@/lib/stateDiseaseMap'
-import { subscribeToAuth, signOutUser } from '@/src/lib/auth'
+import { subscribeToAuth } from '@/src/lib/auth'
 import { getUserFarms, saveDiagnosis } from '@/src/lib/farms'
 import {
   createCropTroubleReport,
@@ -46,6 +46,69 @@ const USOutbreakMap = dynamic(() => import('@/components/USOutbreakMap'), {
 })
 
 type MainView = 'diagnose' | 'history' | 'outbreaks'
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function parsePredictionResponse(value: unknown): PredictionPayload {
+  if (!isPlainRecord(value)) {
+    throw new Error('Prediction response was malformed.')
+  }
+
+  const allPredictions = value.all_predictions
+  if (
+    typeof value.disease !== 'string' ||
+    typeof value.confidence !== 'number' ||
+    typeof value.is_healthy !== 'boolean' ||
+    typeof value.meets_threshold !== 'boolean' ||
+    !Array.isArray(allPredictions)
+  ) {
+    throw new Error('Prediction response was malformed.')
+  }
+
+  const parsedPredictions = allPredictions.map((prediction) => {
+    if (
+      !isPlainRecord(prediction) ||
+      typeof prediction.disease !== 'string' ||
+      typeof prediction.confidence !== 'number'
+    ) {
+      throw new Error('Prediction response was malformed.')
+    }
+
+    return {
+      disease: prediction.disease,
+      confidence: prediction.confidence,
+    }
+  })
+
+  return {
+    disease: value.disease,
+    confidence: value.confidence,
+    is_healthy: value.is_healthy,
+    meets_threshold: value.meets_threshold,
+    all_predictions: parsedPredictions,
+    not_in_catalog: typeof value.not_in_catalog === 'boolean' ? value.not_in_catalog : undefined,
+    catalog_message: typeof value.catalog_message === 'string' ? value.catalog_message : undefined,
+  }
+}
+
+async function getPredictionErrorMessage(response: Response) {
+  try {
+    const payload: unknown = await response.json()
+    if (isPlainRecord(payload) && typeof payload.error === 'string' && payload.error.trim()) {
+      return payload.error
+    }
+  } catch {
+    // The status code is still useful when the body is empty or not JSON.
+  }
+
+  return 'Prediction failed'
+}
 
 function fileToHistoryImageUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -104,6 +167,7 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
   const [outbreaksLoading, setOutbreaksLoading] = useState(false)
   const [outbreaksError, setOutbreaksError] = useState<string | null>(null)
   const selectedFarm = farms.find((farm) => farm.id === selectedFarmId) ?? null
+  const selectedFarmStateCode = selectedFarm?.stateCode ?? ''
   const availableCrops = useMemo(() => selectedFarm?.crops ?? [], [selectedFarm])
   const hasSelectedCrop = selectedFarm !== null && availableCrops.includes(selectedCrop)
   const farmLocation =
@@ -147,9 +211,9 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
             return
           }
           setFarms(userFarms)
-          setSelectedFarmId((current) => (userFarms.some((farm) => farm.id === current) ? current : userFarms[0].id))
+          setSelectedFarmId((current) => (userFarms.some((farm) => farm.id === current) ? current : ''))
         } catch (err: unknown) {
-          setStartupError(err instanceof Error ? err.message : 'Could not load your farm data.')
+          setStartupError(getErrorMessage(err, 'Could not load your farm data.'))
         } finally {
           setFarmsLoading(false)
         }
@@ -226,20 +290,12 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Prediction failed')
+        throw new Error(await getPredictionErrorMessage(response))
       }
 
-      const data = await response.json()
-      const rawPayload: PredictionPayload = {
-        disease: data.disease,
-        confidence: data.confidence,
-        is_healthy: data.is_healthy,
-        meets_threshold: data.meets_threshold,
-        all_predictions: data.all_predictions,
-      }
+      const rawPayload = parsePredictionResponse(await response.json())
       const filtered = applyRegionalFilter(rawPayload)
-      const merged = normalizePredictionPayload({ ...data, ...filtered })
+      const merged = normalizePredictionPayload({ ...rawPayload, ...filtered })
       setPrediction(merged)
 
       // Save to history
@@ -262,7 +318,7 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
             : merged.confidence,
       })
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      setError(getErrorMessage(err, 'An error occurred'))
     } finally {
       setLoading(false)
     }
@@ -282,7 +338,7 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
       try {
         setImageUrl(await fileToHistoryImageUrl(file))
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'Could not read the selected image.')
+        setError(getErrorMessage(err, 'Could not read the selected image.'))
       }
     } else {
       setImageUrl(null)
@@ -298,7 +354,7 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
   }
 
   const loadNearbyReports = useCallback(async () => {
-    if (!selectedFarm?.stateCode) {
+    if (!selectedFarmStateCode) {
       setOutbreakReports([])
       return
     }
@@ -306,13 +362,13 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
     setOutbreaksLoading(true)
     setOutbreaksError(null)
     try {
-      setOutbreakReports(await getNearbyCropTroubleReports(selectedFarm.stateCode))
+      setOutbreakReports(await getNearbyCropTroubleReports(selectedFarmStateCode))
     } catch {
       setOutbreaksError('Could not load nearby reports right now.')
     } finally {
       setOutbreaksLoading(false)
     }
-  }, [selectedFarm?.stateCode])
+  }, [selectedFarmStateCode])
 
   useEffect(() => {
     if (activeView !== 'outbreaks') return
@@ -354,15 +410,13 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
     await loadNearbyReports()
   }
 
-  const handleSignOut = async () => {
-    await signOutUser()
-    router.replace('/login')
-  }
-
   if (authLoading || farmsLoading) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary-700" aria-label="Loading" />
+      <main className="flex min-h-screen items-center justify-center px-4">
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-white/70 bg-surface/70 px-6 py-5 text-center shadow-sm backdrop-blur">
+          <Loader2 className="h-8 w-8 animate-spin text-primary-700" aria-label="Loading" />
+          <p className="text-sm font-semibold text-ink-soft">Loading your account...</p>
+        </div>
       </main>
     )
   }
@@ -437,9 +491,7 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
             </div>
 
             <div className="flex shrink-0 items-center justify-end gap-1.5 sm:gap-2">
-              <button type="button" onClick={handleSignOut} className="btn-secondary px-4 py-2 text-sm">
-                Sign out
-              </button>
+              <AccountMenu user={user} />
               <div className="relative z-50">
                 <NotificationSystem outbreaks={outbreakReports} currentFarmerLocation={farmLocation || undefined} />
               </div>
