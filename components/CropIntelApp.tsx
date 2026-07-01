@@ -661,12 +661,7 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
           </section>
         )}
 
-        <footer className="mt-10 mb-6 border-t border-field-soil/10 pt-5 text-center text-field-soil">
-          <p className="cropintel-footer-pill mb-5 inline-flex items-center gap-2 rounded-full border border-ink/10 bg-surface/60 px-3 py-1 font-mono text-xs uppercase tracking-widest text-ink-soft">
-            <span className="h-1.5 w-1.5 rounded-full bg-leaf" />
-            Models: EfficientNet / TensorFlow Lite
-          </p>
-        </footer>
+        <footer className="mt-10 mb-6 border-t border-field-soil/10 pt-5 text-center text-field-soil" />
       </div>
     </main>
   )
