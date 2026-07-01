@@ -2,8 +2,8 @@
 # Runs after run_publish_queue.sh completes: tomato external eval, gated
 # promotion of every crop that passes (gate-protected, no --force), package,
 # and a summary. Launched detached; waits on the queue's done marker.
-cd /Users/homeportal/CropIntel
-PY=/Users/homeportal/CropIntel/.conda-py311/bin/python
+cd "$(dirname "$0")/../.." || exit 1
+PY="${PY:-python}"
 SUM=ml/logs/publish_summary.txt
 
 echo "=== FINALIZE waiting for publish queue $(date)"

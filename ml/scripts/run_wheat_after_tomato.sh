@@ -2,8 +2,8 @@
 # Waits for the tomato run (in run_overnight_queue.sh) to finish, then trains
 # the 8-class wheat model and runs its external eval. Launched detached so it
 # survives the agent session.
-cd /Users/homeportal/CropIntel
-PY=/Users/homeportal/CropIntel/.conda-py311/bin/python
+cd "$(dirname "$0")/../.." || exit 1
+PY="${PY:-python}"
 
 while ! grep -q "tomato train done" ml/logs/overnight_queue.log 2>/dev/null; do
   sleep 30

@@ -4,8 +4,8 @@
 #             into training; disjoint 30% holdout at ml/field_test/rice_holdout)
 #  - soybean: ASDID field data folded into 3 classes; disjoint 30% holdout
 # One model at a time (8 GB RAM). Each train -> holdout external eval.
-cd /Users/homeportal/CropIntel
-PY=/Users/homeportal/CropIntel/.conda-py311/bin/python
+cd "$(dirname "$0")/../.." || exit 1
+PY="${PY:-python}"
 
 echo "=== PUBLISH QUEUE start $(date)"
 

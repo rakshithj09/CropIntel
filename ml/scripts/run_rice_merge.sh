@@ -4,8 +4,8 @@
 # on white-bg field leaves; see [[rice-data-lever-exhausted]]). Waits for the
 # tomato fix to finish (one model at a time on 8 GB), then train -> eval on the
 # merged holdout -> gated promote.
-cd /Users/homeportal/CropIntel
-PY=/Users/homeportal/CropIntel/.conda-py311/bin/python
+cd "$(dirname "$0")/../.." || exit 1
+PY="${PY:-python}"
 
 echo "=== RICE MERGE waiting for tomato fix $(date)"
 while ! grep -q "TOMATO FIX done" ml/logs/tomato_fix_queue.log 2>/dev/null; do

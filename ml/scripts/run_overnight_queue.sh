@@ -1,8 +1,8 @@
 #!/bin/zsh
 # Sequential training queue: rice (fix the 0.6%-external model with Paddy Doctor
 # field data), then tomato (new crop). One at a time — 8 GB RAM machine.
-cd /Users/homeportal/CropIntel
-PY=/Users/homeportal/CropIntel/.conda-py311/bin/python
+cd "$(dirname "$0")/../.." || exit 1
+PY="${PY:-python}"
 
 echo "=== rice retrain start $(date)"
 $PY -m ml.training.train_crop --crop rice --epochs 40 > ml/logs/rice_paddy.log 2>&1
