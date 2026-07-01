@@ -18,13 +18,16 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
-import type { OutbreakReport, ReportSeverity, ReportStatus } from '@/lib/outbreakReport'
+import type { OutbreakReport } from '@/lib/outbreakReport'
 import {
   CROP_TROUBLE_REPORT_REASONS,
   type CreateCropTroubleReportInput,
   type CropTroubleReportReason,
 } from '@/src/lib/cropTroubleReports'
 import type { Farm } from '@/src/lib/types'
+
+type ReportSeverity = OutbreakReport['severity']
+type ReportStatus = OutbreakReport['status']
 
 const GoogleMapComponent = dynamic(() => import('./GoogleMap'), {
   ssr: false,

@@ -641,7 +641,7 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
                         crop={selectedCrop}
                         isHealthy={prediction.is_healthy}
                       />
-                      <ExportResults prediction={prediction} crop={selectedCrop} imageUrl={imageUrl} />
+                      <ExportResults prediction={prediction} crop={selectedCrop} />
                     </>
                   )}
                 </div>

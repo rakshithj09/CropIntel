@@ -263,8 +263,12 @@ export async function requestFarmAccess(userId: string, farm: FarmSearchResult) 
       throw new Error('Finish setting up your profile before requesting farm access.')
     }
     const requesterName = userSnapshot.data().name
+    const requesterEmail = userSnapshot.data().email
     if (typeof requesterName !== 'string' || requesterName.trim().length === 0) {
       throw new Error('Add your name to your profile before requesting farm access.')
+    }
+    if (typeof requesterEmail !== 'string' || requesterEmail.trim().length === 0) {
+      throw new Error('Add your email to your profile before requesting farm access.')
     }
 
     const memberSnapshot = await transaction.get(memberRef)
@@ -285,6 +289,7 @@ export async function requestFarmAccess(userId: string, farm: FarmSearchResult) 
       farmId: farm.farmId,
       requesterId: userId,
       requesterName: requesterName.trim(),
+      requesterEmail: requesterEmail.trim().toLowerCase(),
       ownerId: farm.ownerId,
       status: 'pending',
       farmName: farm.name,

@@ -8,6 +8,10 @@ import AuthShell from '@/components/auth/AuthShell'
 import { signUpWithEmail, subscribeToAuth } from '@/src/lib/auth'
 import { getUserFarms } from '@/src/lib/farms'
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback
+}
+
 export default function SignupPage() {
   const router = useRouter()
   const [firstName, setFirstName] = useState('')
@@ -36,8 +40,8 @@ export default function SignupPage() {
         try {
           const farms = await getUserFarms(user.uid)
           router.replace(farms.length > 0 ? '/' : '/onboarding')
-        } catch (err: any) {
-          setError(err.message || 'Could not load your farm data.')
+        } catch (err: unknown) {
+          setError(getErrorMessage(err, 'Could not load your farm data.'))
           setCheckingAuth(false)
         }
       },
@@ -61,8 +65,8 @@ export default function SignupPage() {
 
       await signUpWithEmail(`${firstName.trim()} ${lastName.trim()}`.trim(), email.trim(), password)
       router.replace('/onboarding')
-    } catch (err: any) {
-      setError(err.message || 'Could not create your account.')
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Could not create your account.'))
     } finally {
       setLoading(false)
     }

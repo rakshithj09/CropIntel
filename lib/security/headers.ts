@@ -142,7 +142,7 @@ export function addSecurityHeaders(response: NextResponse): NextResponse {
  * @returns Secure NextResponse with headers
  */
 export function createSecureResponse(
-  body: any,
+  body: unknown,
   status: number = 200
 ): NextResponse {
   const response = NextResponse.json(body, { status })

@@ -42,7 +42,6 @@ export default function GoogleMapComponent({
   fullscreenControl = true,
 }: GoogleMapProps) {
   const [selectedReport, setSelectedReport] = useState<OutbreakReport | null>(null)
-  const [mapCenter, setMapCenter] = useState(center)
   const [loadingTimeout, setLoadingTimeout] = useState(false)
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
@@ -94,38 +93,6 @@ export default function GoogleMapComponent({
   }
 
   // Create marker icons - only create when map is loaded
-  const createMarkerIcon = useCallback((color: string) => {
-    if (!isLoaded || typeof google === 'undefined' || !google.maps) {
-      return undefined
-    }
-    
-    // Create a canvas-based circle icon - most reliable method
-    const canvas = document.createElement('canvas')
-    canvas.width = 24
-    canvas.height = 24
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return undefined
-    
-    // Draw filled circle
-    ctx.beginPath()
-    ctx.arc(12, 12, 10, 0, 2 * Math.PI)
-    ctx.fillStyle = color
-    ctx.fill()
-    
-    // Draw white border
-    ctx.strokeStyle = '#ffffff'
-    ctx.lineWidth = 3
-    ctx.stroke()
-    
-    const dataUrl = canvas.toDataURL()
-    
-    return {
-      url: dataUrl,
-      scaledSize: new google.maps.Size(24, 24),
-      anchor: new google.maps.Point(12, 12),
-    }
-  }, [isLoaded])
-
   if (loadError || loadingTimeout) {
     return (
       <div className="flex h-full min-h-[280px] w-full items-center justify-center rounded-xl border-2 border-slate-200 bg-slate-50 sm:min-h-[400px]">
@@ -191,7 +158,7 @@ export default function GoogleMapComponent({
       }} />
       <GoogleMap
         mapContainerStyle={mapContainerStyle}
-        center={mapCenter}
+        center={center}
         zoom={zoom}
         onLoad={handleMapLoad}
         onClick={handleMapClick}
