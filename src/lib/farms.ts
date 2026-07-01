@@ -301,10 +301,12 @@ export async function getPendingFarmAccessRequestsForOwner(ownerId: string) {
     where('ownerId', '==', ownerId),
     where('status', '==', 'pending')
   ))
-  return requestSnapshot.docs.map((requestDoc) => withDisplayAccessRequestStatus({
-    id: requestDoc.id,
-    ...requestDoc.data(),
-  } as FarmAccessRequest))
+  return requestSnapshot.docs
+    .map((requestDoc) => withDisplayAccessRequestStatus({
+      id: requestDoc.id,
+      ...requestDoc.data(),
+    } as FarmAccessRequest))
+    .filter((request) => request.status === 'pending')
 }
 
 export async function approveFarmAccessRequest(ownerId: string, request: FarmAccessRequest) {
