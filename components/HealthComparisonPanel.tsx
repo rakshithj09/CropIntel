@@ -5,7 +5,13 @@
 import { useState } from 'react'
 import { ArrowLeftRight, Loader2, TrendingDown, TrendingUp, Minus } from 'lucide-react'
 import ImageUpload from '@/components/ImageUpload'
-import { compareHealthTrend, trendLabel, type HealthTrend } from '@/lib/healthComparison'
+import {
+  compareHealth,
+  trendLabel,
+  trendDetail,
+  type HealthTrend,
+  type HealthComparison,
+} from '@/lib/healthComparison'
 import type { PredictionPayload } from '@/lib/stateDiseaseMap'
 
 type Props = {
@@ -13,7 +19,13 @@ type Props = {
   applyRegionalFilter: (raw: PredictionPayload) => PredictionPayload
 }
 
-async function runPredict(file: File, crop: string): Promise<PredictionPayload> {
+interface PredictResult {
+  payload: PredictionPayload
+  crop_mismatch: boolean
+  suggested_crop: string | null
+}
+
+async function runPredict(file: File, crop: string): Promise<PredictResult> {
   const formData = new FormData()
   formData.append('image', file)
   formData.append('crop', crop)
@@ -24,13 +36,19 @@ async function runPredict(file: File, crop: string): Promise<PredictionPayload> 
   }
   const data = await response.json()
   return {
-    disease: data.disease,
-    confidence: data.confidence,
-    is_healthy: data.is_healthy,
-    meets_threshold: data.meets_threshold,
-    all_predictions: data.all_predictions,
+    payload: {
+      disease: data.disease,
+      confidence: data.confidence,
+      is_healthy: data.is_healthy,
+      meets_threshold: data.meets_threshold,
+      all_predictions: data.all_predictions,
+    },
+    crop_mismatch: !!data.crop_mismatch,
+    suggested_crop: data.suggested_crop ?? null,
   }
 }
+
+const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
 
 function trendStyles(t: HealthTrend) {
   switch (t) {
@@ -65,6 +83,9 @@ export default function HealthComparisonPanel({ crop, applyRegionalFilter }: Pro
   const [currentUrl, setCurrentUrl] = useState<string | null>(null)
   const [pastPred, setPastPred] = useState<PredictionPayload | null>(null)
   const [currentPred, setCurrentPred] = useState<PredictionPayload | null>(null)
+  // Scored from the RAW (unfiltered) distributions so the health estimate stays
+  // region-independent; the cards still display the region-consistent label.
+  const [comparison, setComparison] = useState<HealthComparison | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -75,6 +96,7 @@ export default function HealthComparisonPanel({ crop, applyRegionalFilter }: Pro
       return file ? URL.createObjectURL(file) : null
     })
     setPastPred(null)
+    setComparison(null)
   }
 
   const onCurrentSelect = (file: File | null) => {
@@ -84,6 +106,7 @@ export default function HealthComparisonPanel({ crop, applyRegionalFilter }: Pro
       return file ? URL.createObjectURL(file) : null
     })
     setCurrentPred(null)
+    setComparison(null)
   }
 
   const clearPast = () => onPastSelect(null)
@@ -98,13 +121,28 @@ export default function HealthComparisonPanel({ crop, applyRegionalFilter }: Pro
     setError(null)
     setPastPred(null)
     setCurrentPred(null)
+    setComparison(null)
     try {
-      const [rawPast, rawCurrent] = await Promise.all([
+      const [past, current] = await Promise.all([
         runPredict(pastFile, crop),
         runPredict(currentFile, crop),
       ])
-      setPastPred(applyRegionalFilter(rawPast))
-      setCurrentPred(applyRegionalFilter(rawCurrent))
+      // If a photo isn't this crop, comparing diagnoses is meaningless.
+      const wrong = past.crop_mismatch ? past : current.crop_mismatch ? current : null
+      if (wrong) {
+        const which = past.crop_mismatch ? 'earlier' : "today's"
+        setError(
+          wrong.suggested_crop
+            ? `The ${which} photo looks more like a ${cap(wrong.suggested_crop)} leaf, not ${cap(crop)}. Use two ${cap(crop)} photos to compare.`
+            : `The ${which} photo doesn't look like a ${cap(crop)} leaf. Use two clear ${cap(crop)} photos to compare.`,
+        )
+        return
+      }
+      // Score from the raw distributions (full softmax, incl. Healthy); display
+      // the regionally-filtered label.
+      setComparison(compareHealth(past.payload, current.payload, crop))
+      setPastPred(applyRegionalFilter(past.payload))
+      setCurrentPred(applyRegionalFilter(current.payload))
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Comparison failed')
     } finally {
@@ -112,14 +150,7 @@ export default function HealthComparisonPanel({ crop, applyRegionalFilter }: Pro
     }
   }
 
-  const trend =
-    pastPred && currentPred
-      ? compareHealthTrend(
-          { disease: pastPred.disease, crop, is_healthy: pastPred.is_healthy },
-          { disease: currentPred.disease, crop, is_healthy: currentPred.is_healthy }
-        )
-      : null
-
+  const trend = comparison?.trend ?? null
   const ts = trend ? trendStyles(trend) : null
 
   return (
@@ -169,24 +200,39 @@ export default function HealthComparisonPanel({ crop, applyRegionalFilter }: Pro
         <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">{error}</div>
       )}
 
-      {pastPred && currentPred && trend && ts && (
+      {pastPred && currentPred && comparison && trend && ts && (
         <div className="mt-8 space-y-6">
           <div
-            className={`flex flex-col items-center justify-center gap-4 rounded-2xl border px-6 py-5 sm:flex-row ${ts.border} ${ts.bg}`}
+            className={`flex flex-col gap-4 rounded-2xl border px-6 py-5 sm:flex-row sm:items-center ${ts.border} ${ts.bg}`}
           >
-            <ts.Icon className={`w-10 h-10 shrink-0 ${ts.text}`} />
-            <div className="text-center sm:text-left">
+            <ts.Icon className={`h-10 w-10 shrink-0 ${ts.text}`} />
+            <div className="min-w-0 flex-1 text-center sm:text-left">
               <p className={`text-xs font-semibold uppercase tracking-wide ${ts.text} opacity-80`}>Comparison</p>
-              <p className={`text-2xl font-bold ${ts.text}`}>{trendLabel(trend)}</p>
-              <p className="text-sm text-slate-600 mt-1 max-w-md">
-                Based on the two photo checks. Scout the field before making treatment decisions.
+              <p className={`text-2xl font-bold ${ts.text}`}>
+                {trendLabel(trend)}
+                {comparison.delta !== 0 && (
+                  <span className="ml-2 align-middle text-base font-semibold tabular-nums opacity-80">
+                    {comparison.delta > 0 ? '+' : ''}
+                    {comparison.delta} pts
+                  </span>
+                )}
               </p>
+              <p className="mt-1 max-w-md text-sm text-slate-600">{trendDetail(comparison)}</p>
+            </div>
+            {/* Health score read-out: earlier → today */}
+            <div className="flex items-center justify-center gap-3 sm:flex-col sm:items-end sm:gap-1">
+              <span className="text-sm tabular-nums text-slate-500">
+                {comparison.pastScore}
+                <span className="mx-1">→</span>
+                <span className={`text-lg font-bold ${ts.text}`}>{comparison.currentScore}</span>
+                <span className="ml-1 text-xs text-slate-400">/100 health</span>
+              </span>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <ComparisonCard label="Past" imageUrl={pastUrl} prediction={pastPred} accent="border-slate-200" />
-            <ComparisonCard label="Current" imageUrl={currentUrl} prediction={currentPred} accent="border-primary-200" />
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <ComparisonCard label="Earlier" imageUrl={pastUrl} prediction={pastPred} score={comparison.pastScore} accent="border-slate-200" />
+            <ComparisonCard label="Today" imageUrl={currentUrl} prediction={currentPred} score={comparison.currentScore} accent="border-primary-200" />
           </div>
         </div>
       )}
@@ -198,17 +244,22 @@ function ComparisonCard({
   label,
   imageUrl,
   prediction,
+  score,
   accent,
 }: {
   label: string
   imageUrl: string | null
   prediction: PredictionPayload
+  score: number
   accent: string
 }) {
   return (
     <div className={`overflow-hidden rounded-2xl border bg-white shadow-sm ${accent}`}>
-      <div className="border-b border-field-soil/10 bg-field-cream px-4 py-2">
+      <div className="flex items-center justify-between border-b border-field-soil/10 bg-field-cream px-4 py-2">
         <span className="text-sm font-bold text-slate-800">{label}</span>
+        <span className="text-xs font-semibold tabular-nums text-slate-500">
+          Health {score}/100
+        </span>
       </div>
       {imageUrl && (
         <div className="h-44 w-full bg-slate-100 flex items-center justify-center p-2">

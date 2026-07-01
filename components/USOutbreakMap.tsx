@@ -2,10 +2,26 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import dynamic from 'next/dynamic'
-import { MapPin, AlertTriangle, X, Save, Maximize2, Minimize2 } from 'lucide-react'
-import type { OutbreakReport } from '@/lib/outbreakReport'
+import Image from 'next/image'
+import { createPortal } from 'react-dom'
+import {
+  AlertTriangle,
+  Camera,
+  CheckCircle2,
+  ChevronDown,
+  Flag,
+  Loader2,
+  MapPin,
+  Maximize2,
+  Minimize2,
+  Save,
+  ThumbsUp,
+  X,
+} from 'lucide-react'
+import type { OutbreakReport, ReportSeverity, ReportStatus } from '@/lib/outbreakReport'
+import type { CreateCropTroubleReportInput } from '@/src/lib/cropTroubleReports'
+import type { Farm } from '@/src/lib/types'
 
-// Dynamically import Google Maps component to avoid SSR issues
 const GoogleMapComponent = dynamic(() => import('./GoogleMap'), {
   ssr: false,
   loading: () => (
@@ -20,7 +36,34 @@ const GoogleMapComponent = dynamic(() => import('./GoogleMap'), {
 
 interface USOutbreakMapProps {
   reports?: OutbreakReport[]
-  onReportSubmit?: (report: OutbreakReport) => void
+  currentUserId: string
+  selectedFarm: Farm | null
+  loadingReports?: boolean
+  reportsError?: string | null
+  onReportSubmit?: (report: Omit<CreateCropTroubleReportInput, 'userId' | 'farmId'>) => Promise<void>
+  onSeeingToo?: (reportId: string) => Promise<void>
+  onReportPost?: (reportId: string) => Promise<void>
+  onStatusUpdate?: (reportId: string, status: Exclude<ReportStatus, 'new'>) => Promise<void>
+}
+
+type ReportFormData = {
+  crop: string
+  issueType: string
+  severity: ReportSeverity
+  description: string
+  generalArea: string
+  sharePhoto: boolean
+  photoFile: File | null
+}
+
+const initialFormData: ReportFormData = {
+  crop: '',
+  issueType: '',
+  severity: 'medium',
+  description: '',
+  generalArea: '',
+  sharePhoto: false,
+  photoFile: null,
 }
 
 function triggerMapResize(map: google.maps.Map | null) {
@@ -79,16 +122,77 @@ async function exitDocumentFullscreen(): Promise<void> {
   }
 }
 
-export default function USOutbreakMap({ reports = [], onReportSubmit }: USOutbreakMapProps) {
+function formatStatus(status: ReportStatus) {
+  if (status === 'confirmed') return 'Confirmed'
+  if (status === 'resolved') return 'Resolved'
+  return 'New'
+}
+
+function formatSeverity(severity: ReportSeverity) {
+  if (severity === 'high') return 'High'
+  if (severity === 'low') return 'Low'
+  return 'Medium'
+}
+
+function reportAge(date: string) {
+  const elapsedMs = Date.now() - new Date(date).getTime()
+  const minutes = Math.max(1, Math.round(elapsedMs / 60000))
+  if (minutes < 60) return `${minutes} min ago`
+  const hours = Math.round(minutes / 60)
+  if (hours < 48) return `${hours} hr ago`
+  return `${Math.round(hours / 24)} days ago`
+}
+
+function roundApprox(value: number) {
+  return Math.round(value * 10) / 10
+}
+
+function friendlyError(error: unknown) {
+  if (error instanceof Error && error.message) {
+    if (error.message.trim().startsWith('[')) return 'Could not save that report. Check the details and try again.'
+    if (error.message.includes('wait')) return error.message
+    if (error.message.includes('photo') || error.message.includes('JPEG')) return error.message
+  }
+  return 'Could not save that report. Check the details and try again.'
+}
+
+export default function USOutbreakMap({
+  reports = [],
+  currentUserId,
+  selectedFarm,
+  loadingReports = false,
+  reportsError = null,
+  onReportSubmit,
+  onSeeingToo,
+  onReportPost,
+  onStatusUpdate,
+}: USOutbreakMapProps) {
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [showReportForm, setShowReportForm] = useState(false)
+  const [formData, setFormData] = useState<ReportFormData>(initialFormData)
+  const [submitting, setSubmitting] = useState(false)
+  const [formMessage, setFormMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [busyReportId, setBusyReportId] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
   const mapCardRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<google.maps.Map | null>(null)
   const [browserFullscreen, setBrowserFullscreen] = useState(false)
-  /** iOS / browsers without element fullscreen */
   const [layoutFullscreen, setLayoutFullscreen] = useState(false)
 
   const expanded = browserFullscreen || layoutFullscreen
+  const stateCode = selectedFarm?.stateCode ?? ''
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const closeModal = useCallback(() => {
+    if (submitting) return
+    setShowReportForm(false)
+    setSelectedLocation(null)
+    setFormData(initialFormData)
+    setFormMessage(null)
+  }, [submitting])
 
   const handleMapReady = useCallback((map: google.maps.Map) => {
     mapInstanceRef.current = map
@@ -150,22 +254,24 @@ export default function USOutbreakMap({ reports = [], onReportSubmit }: USOutbre
   }, [expanded, exitAllFullscreen])
 
   useEffect(() => {
-    if (!layoutFullscreen && !browserFullscreen) return
+    if (!layoutFullscreen && !browserFullscreen && !showReportForm) return
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     return () => {
       document.body.style.overflow = prev
     }
-  }, [layoutFullscreen, browserFullscreen])
+  }, [layoutFullscreen, browserFullscreen, showReportForm])
 
   useEffect(() => {
-    if (!expanded) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') void exitAllFullscreen()
+      if (e.key === 'Escape') {
+        if (showReportForm) closeModal()
+        else if (expanded) void exitAllFullscreen()
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [expanded, exitAllFullscreen])
+  }, [closeModal, expanded, exitAllFullscreen, showReportForm])
 
   useEffect(() => {
     return () => {
@@ -174,64 +280,77 @@ export default function USOutbreakMap({ reports = [], onReportSubmit }: USOutbre
     }
   }, [])
 
-  // Ensure modal closes on mount/unmount to prevent stuck overlays
-  useEffect(() => {
-    return () => {
-      setShowReportForm(false)
-      setSelectedLocation(null)
-    }
-  }, [])
-
-  const [formData, setFormData] = useState({
-    crop: '',
-    disease: '',
-    severity: 'medium' as 'low' | 'medium' | 'high',
-    description: '',
-  })
-
   const handleMapClick = (lat: number, lng: number) => {
-    // Restrict to US bounds
+    if (!currentUserId) return
     const clampedLat = Math.max(24.39, Math.min(49.38, lat))
     const clampedLng = Math.max(-125, Math.min(-66.93, lng))
-    
+
     setSelectedLocation({ lat: clampedLat, lng: clampedLng })
+    setFormData({
+      ...initialFormData,
+      crop: selectedFarm?.crops[0] ?? '',
+      generalArea: stateCode ? `${stateCode}` : '',
+    })
+    setFormMessage(null)
     setShowReportForm(true)
   }
 
-  const handleSubmitReport = () => {
-    if (!selectedLocation || !formData.crop || !formData.disease) {
-      alert('Please fill in all required fields')
+  const handleSubmitReport = async () => {
+    if (!onReportSubmit || !selectedLocation || !stateCode) return
+    if (!formData.crop || !formData.issueType || !formData.generalArea.trim()) {
+      setFormMessage({ type: 'error', text: 'Add the crop, trouble, and general area.' })
+      return
+    }
+    if (formData.description.length > 700) {
+      setFormMessage({ type: 'error', text: 'Keep notes under 700 characters.' })
+      return
+    }
+    if (formData.photoFile && !formData.sharePhoto) {
+      setFormMessage({ type: 'error', text: 'Check the photo sharing box before adding a shared photo.' })
       return
     }
 
-    const newReport: OutbreakReport = {
-      id: Date.now().toString(),
-      lat: selectedLocation.lat,
-      lng: selectedLocation.lng,
-      crop: formData.crop,
-      disease: formData.disease,
-      severity: formData.severity,
-      date: new Date().toISOString(),
-      description: formData.description,
+    setSubmitting(true)
+    setFormMessage(null)
+    try {
+      await onReportSubmit({
+        crop: formData.crop as CreateCropTroubleReportInput['crop'],
+        issueType: formData.issueType,
+        severity: formData.severity,
+        description: formData.description,
+        location: {
+          lat: roundApprox(selectedLocation.lat),
+          lng: roundApprox(selectedLocation.lng),
+          stateCode: stateCode as CreateCropTroubleReportInput['location']['stateCode'],
+          generalArea: formData.generalArea.trim(),
+          precision: 'approximate',
+        },
+        photoShared: formData.sharePhoto && Boolean(formData.photoFile),
+        photoFile: formData.sharePhoto ? formData.photoFile : null,
+      })
+      setFormMessage({ type: 'success', text: 'Report shared with nearby farmers.' })
+      window.setTimeout(closeModal, 900)
+    } catch (error) {
+      setFormMessage({ type: 'error', text: friendlyError(error) })
+    } finally {
+      setSubmitting(false)
     }
+  }
 
-    if (onReportSubmit) {
-      onReportSubmit(newReport)
+  const runReportAction = async (reportId: string, action: () => Promise<void>, doneMessage?: string) => {
+    setBusyReportId(reportId)
+    try {
+      await action()
+      if (doneMessage) setFormMessage({ type: 'success', text: doneMessage })
+    } catch {
+      setFormMessage({ type: 'error', text: 'Could not update that report right now.' })
+    } finally {
+      setBusyReportId(null)
     }
-
-    setShowReportForm(false)
-    setSelectedLocation(null)
-    setFormData({
-      crop: '',
-      disease: '',
-      severity: 'medium',
-      description: '',
-    })
   }
 
   return (
-    <div className="relative w-full">
-      {/* Map card: explicit height so the map fills the area (no aspect-ratio gap) */}
+    <div className="relative w-full space-y-5">
       <div
         ref={mapCardRef}
         className={`flex w-full flex-col overflow-hidden rounded-xl border border-field-soil/10 bg-white shadow-sm ${
@@ -240,16 +359,10 @@ export default function USOutbreakMap({ reports = [], onReportSubmit }: USOutbre
             : ''
         } ${expanded ? 'h-full min-h-0' : ''}`}
       >
-        <div
-          className={`relative flex w-full min-h-0 flex-col ${
-            expanded ? 'h-full min-h-0 flex-1' : ''
-          }`}
-        >
+        <div className={`relative flex w-full min-h-0 flex-col ${expanded ? 'h-full min-h-0 flex-1' : ''}`}>
           <div
             className={`relative min-h-0 w-full overflow-hidden ${
-              expanded
-                ? 'min-h-0 flex-1'
-                : 'h-[min(52dvh,560px)] min-h-[280px] sm:min-h-[420px]'
+              expanded ? 'min-h-0 flex-1' : 'h-[min(52dvh,560px)] min-h-[280px] sm:min-h-[420px]'
             }`}
           >
             <GoogleMapComponent
@@ -270,146 +383,336 @@ export default function USOutbreakMap({ reports = [], onReportSubmit }: USOutbre
                 aria-label={expanded ? 'Exit fullscreen map' : 'Fullscreen map'}
                 title={expanded ? 'Exit fullscreen' : 'Fullscreen'}
               >
-                {expanded ? (
-                  <Minimize2 className="h-5 w-5 sm:h-5 sm:w-5" />
-                ) : (
-                  <Maximize2 className="h-5 w-5 sm:h-5 sm:w-5" />
-                )}
+                {expanded ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
               </button>
             </div>
-
-            {selectedLocation && !showReportForm && (
-              <div className="pointer-events-none absolute left-2 top-12 z-[1000] max-w-[calc(100%-4rem)] rounded-lg border border-primary-200 bg-white p-2 shadow-xl sm:left-3 sm:top-14 sm:p-3">
-                <p className="mb-0.5 text-[11px] font-bold text-primary-900 sm:text-xs">Selected location</p>
-                <p className="break-all font-mono text-[10px] text-slate-600 sm:text-xs">
-                  {selectedLocation.lat.toFixed(4)}, {selectedLocation.lng.toFixed(4)}
-                </p>
-              </div>
-            )}
           </div>
 
           <div className="flex shrink-0 items-center gap-2 border-t border-field-soil/10 bg-field-cream px-3 py-2.5 sm:px-4 sm:py-3">
             <MapPin className="h-4 w-4 shrink-0 text-primary-700" />
             <p className="text-xs font-semibold leading-snug text-primary-900 sm:text-sm">
-              Tap the map where you are seeing crop trouble
+              Tap the map where you are seeing crop trouble. Shared reports use only a general area.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Report Form Modal — no AnimatePresence exit on full-screen layer (opacity-0 still captures clicks). */}
-      {showReportForm && (
-        <div className="fixed inset-0 z-[6000] flex items-end justify-center sm:items-center sm:p-4">
+      <section className="rounded-xl border border-field-soil/10 bg-white p-4 sm:p-5">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-bold text-primary-900">Nearby Crop Trouble</h3>
+            <p className="mt-1 text-sm text-field-soil">
+              Recent anonymous reports from {stateCode || 'your state'}.
+            </p>
+          </div>
+          {loadingReports && <Loader2 className="h-5 w-5 animate-spin text-primary-700" aria-label="Loading reports" />}
+        </div>
+
+        {reportsError && (
+          <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-900">
+            {reportsError}
+          </div>
+        )}
+
+        {formMessage && !showReportForm && (
           <div
-            role="presentation"
+            className={`mb-4 rounded-xl border px-4 py-3 text-sm font-semibold ${
+              formMessage.type === 'success'
+                ? 'border-leaf/30 bg-green-50 text-green-900'
+                : 'border-rose-200 bg-rose-50 text-rose-900'
+            }`}
+          >
+            {formMessage.text}
+          </div>
+        )}
+
+        {reports.length === 0 && !loadingReports ? (
+          <div className="rounded-xl border border-dashed border-field-soil/20 bg-field-cream px-4 py-8 text-center text-sm font-semibold text-field-soil">
+            No nearby reports yet. Share what you see to help other farms.
+          </div>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2">
+            {reports.map((report) => {
+              const isOwner = report.userId === currentUserId
+              const busy = busyReportId === report.id
+              return (
+                <article key={report.id} className="rounded-xl border border-field-soil/10 bg-field-cream p-4">
+                  {report.photoShared && report.photoUrl && (
+                    <div className="mb-3 overflow-hidden rounded-lg border border-field-soil/10 bg-white">
+                      <Image
+                        src={report.photoUrl}
+                        alt={`${report.crop} trouble report`}
+                        width={640}
+                        height={360}
+                        className="h-40 w-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wider text-field-soil">Crop</p>
+                      <h4 className="text-base font-bold text-primary-950">{report.crop}</h4>
+                    </div>
+                    <span className="rounded-full border border-ink/10 bg-white px-3 py-1 text-xs font-bold text-ink">
+                      {formatStatus(report.status)}
+                    </span>
+                  </div>
+
+                  <dl className="mt-3 grid gap-2 text-sm">
+                    <div>
+                      <dt className="font-bold text-primary-900">Trouble reported</dt>
+                      <dd className="text-field-soil">{report.issueType}</dd>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <dt className="font-bold text-primary-900">Severity</dt>
+                        <dd className="text-field-soil">{formatSeverity(report.severity)}</dd>
+                      </div>
+                      <div>
+                        <dt className="font-bold text-primary-900">Time reported</dt>
+                        <dd className="text-field-soil">{reportAge(report.createdAt)}</dd>
+                      </div>
+                    </div>
+                    <div>
+                      <dt className="font-bold text-primary-900">General area</dt>
+                      <dd className="text-field-soil">{report.location.generalArea}</dd>
+                    </div>
+                  </dl>
+
+                  {report.description && (
+                    <p className="mt-3 rounded-lg bg-white/70 p-3 text-sm leading-6 text-ink-soft">
+                      {report.description}
+                    </p>
+                  )}
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() =>
+                        onSeeingToo &&
+                        void runReportAction(report.id, () => onSeeingToo(report.id), 'Thanks. We counted it.')
+                      }
+                      className="btn-secondary bg-white px-3 py-2 text-sm"
+                    >
+                      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ThumbsUp className="h-4 w-4" />}
+                      Seeing this too ({report.seeingTooCount})
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() =>
+                        onReportPost &&
+                        void runReportAction(report.id, () => onReportPost(report.id), 'Thanks. We will review it.')
+                      }
+                      className="btn-secondary bg-white px-3 py-2 text-sm"
+                    >
+                      <Flag className="h-4 w-4" />
+                      Report this post
+                    </button>
+                    {isOwner && report.status !== 'confirmed' && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() =>
+                          onStatusUpdate &&
+                          void runReportAction(report.id, () => onStatusUpdate(report.id, 'confirmed'))
+                        }
+                        className="btn-secondary bg-white px-3 py-2 text-sm"
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        Mark confirmed
+                      </button>
+                    )}
+                    {isOwner && report.status !== 'resolved' && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() =>
+                          onStatusUpdate &&
+                          void runReportAction(report.id, () => onStatusUpdate(report.id, 'resolved'))
+                        }
+                        className="btn-secondary bg-white px-3 py-2 text-sm"
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        Mark resolved
+                      </button>
+                    )}
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        )}
+      </section>
+
+      {mounted && showReportForm && createPortal(
+        <div className="fixed inset-0 z-[90000] flex items-center justify-center p-3 sm:p-4">
+          <button
+            type="button"
+            aria-label="Close report form"
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => {
-              setShowReportForm(false)
-              setSelectedLocation(null)
-            }}
+            onClick={closeModal}
           />
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="report-crop-trouble-title"
             onClick={(e) => e.stopPropagation()}
-            className="relative z-10 max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-2xl border border-field-soil/10 bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-2xl sm:p-6 sm:pb-6"
+            className="relative z-10 flex max-h-[calc(100dvh-1.5rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-field-soil/10 bg-white shadow-2xl"
           >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="flex items-center gap-3 text-2xl font-bold text-primary-900">
-                  <div className="rounded-lg bg-field-wheat/40 p-2">
-                    <AlertTriangle className="h-6 w-6 text-field-soil" />
-                  </div>
+            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-field-soil/10 px-4 py-4 sm:px-5">
+              <div className="min-w-0">
+                <h2 id="report-crop-trouble-title" className="flex items-center gap-2 text-xl font-bold text-primary-950">
+                  <span className="rounded-lg bg-field-wheat/40 p-2">
+                    <AlertTriangle className="h-5 w-5 text-field-soil" />
+                  </span>
                   Report crop trouble
                 </h2>
-                <button
-                  onClick={() => {
-                    setShowReportForm(false)
-                    setSelectedLocation(null)
-                  }}
-                  className="rounded-lg p-1 text-field-soil transition-colors hover:bg-field-cream hover:text-primary-900"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <p className="mt-2 text-sm leading-5 text-field-soil">
+                  Share only a general area. Names, emails, and exact farm addresses are not shown.
+                </p>
               </div>
+              <button
+                type="button"
+                onClick={closeModal}
+                disabled={submitting}
+                className="rounded-full p-2 text-field-soil transition hover:bg-field-cream hover:text-primary-900 disabled:opacity-50"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
 
+            <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-5">
               {selectedLocation && (
-                <div className="mb-4 rounded-lg border border-primary-100 bg-primary-50 p-3">
-                  <p className="mb-1 text-xs font-semibold text-primary-800">Location</p>
-                  <p className="font-mono text-sm text-primary-900">
-                    {selectedLocation.lat.toFixed(4)}, {selectedLocation.lng.toFixed(4)}
-                  </p>
+                <div className="rounded-xl border border-primary-100 bg-primary-50 p-3 text-sm text-primary-900">
+                  Map spot saved as an approximate area near {roundApprox(selectedLocation.lat).toFixed(1)},{' '}
+                  {roundApprox(selectedLocation.lng).toFixed(1)}.
                 </div>
               )}
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Crop affected <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
+              {formMessage && (
+                <div
+                  className={`rounded-xl border px-4 py-3 text-sm font-semibold ${
+                    formMessage.type === 'success'
+                      ? 'border-leaf/30 bg-green-50 text-green-900'
+                      : 'border-rose-200 bg-rose-50 text-rose-900'
+                  }`}
+                >
+                  {formMessage.text}
+                </div>
+              )}
+
+              <div>
+                <label className="mb-2 block text-sm font-bold text-primary-900">Crop</label>
+                <div className="relative">
+                  <select
                     value={formData.crop}
                     onChange={(e) => setFormData({ ...formData, crop: e.target.value })}
-                    placeholder="Corn, wheat, rice"
-                    className="field-input py-2.5"
-                  />
+                    className="field-input h-12 appearance-none py-0 pl-4 pr-11 leading-tight"
+                  >
+                    <option value="">Choose crop</option>
+                    {(selectedFarm?.crops ?? []).map((crop) => (
+                      <option key={crop} value={crop}>
+                        {crop}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-field-soil" />
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    What it looks like <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.disease}
-                    onChange={(e) => setFormData({ ...formData, disease: e.target.value })}
-                    placeholder="Rust, blight, yellowing"
-                    className="field-input py-2.5"
-                  />
-                </div>
+              <div>
+                <label className="mb-2 block text-sm font-bold text-primary-900">Trouble reported</label>
+                <input
+                  type="text"
+                  value={formData.issueType}
+                  onChange={(e) => setFormData({ ...formData, issueType: e.target.value.slice(0, 120) })}
+                  placeholder="Rust, blight, yellow leaves"
+                  className="field-input py-2.5"
+                />
+              </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    How bad is it? <span className="text-red-500">*</span>
-                  </label>
+              <div>
+                <label className="mb-2 block text-sm font-bold text-primary-900">Severity</label>
+                <div className="relative">
                   <select
                     value={formData.severity}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        severity: e.target.value as 'low' | 'medium' | 'high',
-                      })
-                    }
-                    className="field-input py-2.5"
+                    onChange={(e) => setFormData({ ...formData, severity: e.target.value as ReportSeverity })}
+                    className="field-input h-12 appearance-none py-0 pl-4 pr-11 leading-tight"
                   >
                     <option value="low">Low</option>
                     <option value="medium">Medium</option>
                     <option value="high">High</option>
                   </select>
+                  <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-field-soil" />
                 </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Field notes
-                  </label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="How much of the field is affected? When did you notice it?"
-                    rows={3}
-                    className="field-input resize-none py-2.5"
-                  />
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleSubmitReport}
-                  className="btn-primary w-full"
-                >
-                  <Save className="w-5 h-5" />
-                  Share report
-                </button>
               </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-bold text-primary-900">General area</label>
+                <input
+                  type="text"
+                  value={formData.generalArea}
+                  onChange={(e) => setFormData({ ...formData, generalArea: e.target.value.slice(0, 120) })}
+                  placeholder="Washington County, AR"
+                  className="field-input py-2.5"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-bold text-primary-900">Field notes</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value.slice(0, 700) })}
+                  placeholder="What part of the field is affected? When did you notice it?"
+                  rows={4}
+                  className="field-input resize-none py-2.5"
+                />
+                <p className="mt-1 text-xs font-semibold text-field-soil">{formData.description.length}/700</p>
+              </div>
+
+              <div className="rounded-xl border border-field-soil/10 bg-field-cream p-3">
+                <label className="flex items-start gap-3 text-sm font-semibold text-primary-900">
+                  <input
+                    type="checkbox"
+                    checked={formData.sharePhoto}
+                    onChange={(e) => setFormData({ ...formData, sharePhoto: e.target.checked })}
+                    className="mt-1 h-4 w-4 rounded border-field-soil/30"
+                  />
+                  Share the photo with other signed-in users
+                </label>
+                <label className="mt-3 flex min-h-[44px] cursor-pointer items-center justify-center gap-2 rounded-full border border-ink/10 bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm">
+                  <Camera className="h-4 w-4" />
+                  {formData.photoFile ? formData.photoFile.name : 'Choose photo'}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="sr-only"
+                    onChange={(e) => setFormData({ ...formData, photoFile: e.target.files?.[0] ?? null })}
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="flex shrink-0 flex-col gap-2 border-t border-field-soil/10 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:flex-row sm:px-5">
+              <button type="button" onClick={closeModal} disabled={submitting} className="btn-secondary w-full sm:w-auto">
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleSubmitReport()}
+                disabled={submitting}
+                className="btn-primary w-full sm:flex-1"
+              >
+                {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+                {submitting ? 'Sharing...' : 'Share report'}
+              </button>
+            </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

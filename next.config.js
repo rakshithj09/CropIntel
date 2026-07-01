@@ -27,6 +27,14 @@ const nextConfig = {
     : {}),
   // Security: Disable X-Powered-By header
   poweredByHeader: false,
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'firebasestorage.googleapis.com',
+      },
+    ],
+  },
 }
 
 module.exports = nextConfig

@@ -18,11 +18,12 @@ export default function Hero() {
             Crop disease, diagnosed on your phone
           </p>
           <h1 className="font-display text-[clamp(2.75rem,6vw,5rem)] font-extrabold leading-[0.98] tracking-[-0.02em] text-ink">
-            Diagnose crop disease from a single photo.
+            Take a clear photo of an affected leaf.
           </h1>
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-ink-soft">
-            Point your phone at a leaf. CropIntel names the disease, rates the
-            severity, and tells you what to do — in seconds, even offline.
+            CropIntel helps you identify likely leaf disease symptoms, estimate
+            how much of the leaf is affected, and decide what to check next, even
+            with no signal.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-4">
             <a

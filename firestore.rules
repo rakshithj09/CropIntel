@@ -44,6 +44,59 @@ service cloud.firestore {
         (lng == null || (lng is number && lng >= -180 && lng <= 180));
     }
 
+    function validSeverity(severity) {
+      return severity in ['low', 'medium', 'high'];
+    }
+
+    function validCropTroubleLocation(location) {
+      return location is map &&
+        location.keys().hasOnly(['lat', 'lng', 'stateCode', 'generalArea', 'precision']) &&
+        validLatLng(location.lat, location.lng) &&
+        validStateCode(location.stateCode) &&
+        isString(location.generalArea, 2, 120) &&
+        location.precision in ['approximate', 'county_state', 'state'];
+    }
+
+    function validCropTroubleCreate() {
+      return request.resource.data.keys().hasOnly([
+        'userId', 'farmId', 'crop', 'issueType', 'disease', 'severity', 'description',
+        'location', 'photoUrl', 'photoPath', 'photoShared', 'createdAt', 'status',
+        'seeingTooCount', 'moderationCount'
+      ]) &&
+      request.resource.data.userId == request.auth.uid &&
+      (request.resource.data.farmId == null || request.resource.data.farmId is string) &&
+      (request.resource.data.farmId == null || isFarmMember(request.resource.data.farmId)) &&
+      validCrop(request.resource.data.crop) &&
+      isString(request.resource.data.issueType, 1, 120) &&
+      request.resource.data.disease == request.resource.data.issueType &&
+      validSeverity(request.resource.data.severity) &&
+      request.resource.data.description is string &&
+      request.resource.data.description.size() <= 700 &&
+      validCropTroubleLocation(request.resource.data.location) &&
+      (
+        (
+          request.resource.data.photoShared == false &&
+          request.resource.data.photoUrl == null &&
+          request.resource.data.photoPath == null
+        ) ||
+        (
+          request.resource.data.photoShared == true &&
+          isString(request.resource.data.photoUrl, 1, 2048) &&
+          request.resource.data.photoPath == 'cropTroubleReports/' + request.resource.id + '/shared-photo'
+        )
+      ) &&
+      request.resource.data.createdAt == request.time &&
+      request.resource.data.status == 'new' &&
+      request.resource.data.seeingTooCount == 0 &&
+      request.resource.data.moderationCount == 0 &&
+      getAfter(/databases/$(database)/documents/reportRateLimits/$(request.auth.uid)).data.lastReportAt == request.time &&
+      (
+        !exists(/databases/$(database)/documents/reportRateLimits/$(request.auth.uid)) ||
+        get(/databases/$(database)/documents/reportRateLimits/$(request.auth.uid)).data.lastReportAt <
+          request.time - duration.value(10, 'm')
+      );
+    }
+
     function validFarmCreate() {
       return request.resource.data.keys().hasOnly([
         'name', 'ownerId', 'joinCode', 'address', 'lat', 'lng', 'stateCode',
@@ -263,6 +316,59 @@ service cloud.firestore {
         request.resource.data.confidence <= 100 &&
         request.resource.data.detectedAt == request.time;
       allow update, delete: if false;
+    }
+
+    match /reportRateLimits/{userId} {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) &&
+        request.resource.data.keys().hasOnly(['userId', 'lastReportAt']) &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.lastReportAt == request.time;
+      allow delete: if false;
+    }
+
+    match /cropTroubleReports/{reportId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && validCropTroubleCreate();
+      allow update: if signedIn() && (
+        (
+          resource.data.userId == request.auth.uid &&
+          request.resource.data.diff(resource.data).changedKeys().hasOnly(['status']) &&
+          request.resource.data.status in ['confirmed', 'resolved']
+        ) ||
+        (
+          request.resource.data.diff(resource.data).changedKeys().hasOnly(['seeingTooCount']) &&
+          request.resource.data.seeingTooCount == resource.data.seeingTooCount + 1 &&
+          !exists(/databases/$(database)/documents/cropTroubleReports/$(reportId)/seeingToo/$(request.auth.uid)) &&
+          getAfter(/databases/$(database)/documents/cropTroubleReports/$(reportId)/seeingToo/$(request.auth.uid)).data.userId == request.auth.uid
+        ) ||
+        (
+          request.resource.data.diff(resource.data).changedKeys().hasOnly(['moderationCount']) &&
+          request.resource.data.moderationCount == resource.data.moderationCount + 1 &&
+          !exists(/databases/$(database)/documents/cropTroubleReports/$(reportId)/moderationReports/$(request.auth.uid)) &&
+          getAfter(/databases/$(database)/documents/cropTroubleReports/$(reportId)/moderationReports/$(request.auth.uid)).data.userId == request.auth.uid
+        )
+      );
+      allow delete: if signedIn() && resource.data.userId == request.auth.uid;
+
+      match /seeingToo/{userId} {
+        allow read: if signedIn();
+        allow create: if isOwner(userId) &&
+          request.resource.data.keys().hasOnly(['userId', 'createdAt']) &&
+          request.resource.data.userId == request.auth.uid &&
+          request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
+      }
+
+      match /moderationReports/{userId} {
+        allow read: if signedIn() && userId == request.auth.uid;
+        allow create: if isOwner(userId) &&
+          request.resource.data.keys().hasOnly(['userId', 'reason', 'createdAt']) &&
+          request.resource.data.userId == request.auth.uid &&
+          isString(request.resource.data.reason, 1, 80) &&
+          request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
+      }
     }
 
     match /{document=**} {
