@@ -40,6 +40,7 @@ export type FarmAccessRequest = {
   id: string
   farmId: string
   requesterId: string
+  requesterName?: string
   ownerId: string
   status: FarmAccessRequestStatus
   farmName: string

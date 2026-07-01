@@ -211,7 +211,7 @@ export default function FarmsPage() {
                     <div>
                       <p className="text-sm font-bold text-primary-900">{request.farmName}</p>
                       <p className="mt-1 text-sm text-field-soil">
-                        Requester ID: <span className="font-mono">{request.requesterId}</span>
+                        Requester: <span className="font-semibold text-primary-900">{request.requesterName?.trim() || 'CropIntel user'}</span>
                       </p>
                       <span className="mt-2 inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-bold uppercase text-amber-800">
                         {request.status}

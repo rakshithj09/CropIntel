@@ -179,12 +179,15 @@ service cloud.firestore {
 
     function validAccessRequestCreate(farmId, requesterId) {
       return request.resource.data.keys().hasOnly([
-        'farmId', 'requesterId', 'ownerId', 'status', 'farmName', 'farmStateCode',
+        'farmId', 'requesterId', 'requesterName', 'ownerId', 'status', 'farmName', 'farmStateCode',
         'farmAddress', 'requestedAt', 'requestExpiresAt'
       ]) &&
       farmId == request.resource.data.farmId &&
       requesterId == request.resource.data.requesterId &&
       requesterId == request.auth.uid &&
+      isString(request.resource.data.requesterName, 1, 100) &&
+      exists(/databases/$(database)/documents/users/$(requesterId)) &&
+      get(/databases/$(database)/documents/users/$(requesterId)).data.name == request.resource.data.requesterName &&
       request.resource.data.status == 'pending' &&
       request.resource.data.requestedAt == request.time &&
       request.resource.data.requestExpiresAt is timestamp &&

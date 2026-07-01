@@ -255,8 +255,18 @@ export async function requestFarmAccess(userId: string, farm: FarmSearchResult) 
   const db = getFirebaseDb()
   const requestRef = doc(db, 'farmAccessRequests', buildFarmAccessRequestId(farm.farmId, userId))
   const memberRef = doc(db, 'farmMembers', buildFarmMemberId(farm.farmId, userId))
+  const userRef = doc(db, 'users', userId)
 
   await runTransaction(db, async (transaction) => {
+    const userSnapshot = await transaction.get(userRef)
+    if (!userSnapshot.exists()) {
+      throw new Error('Finish setting up your profile before requesting farm access.')
+    }
+    const requesterName = userSnapshot.data().name
+    if (typeof requesterName !== 'string' || requesterName.trim().length === 0) {
+      throw new Error('Add your name to your profile before requesting farm access.')
+    }
+
     const memberSnapshot = await transaction.get(memberRef)
     if (memberSnapshot.exists()) {
       throw new Error('You already belong to this farm.')
@@ -274,6 +284,7 @@ export async function requestFarmAccess(userId: string, farm: FarmSearchResult) 
     transaction.set(requestRef, {
       farmId: farm.farmId,
       requesterId: userId,
+      requesterName: requesterName.trim(),
       ownerId: farm.ownerId,
       status: 'pending',
       farmName: farm.name,

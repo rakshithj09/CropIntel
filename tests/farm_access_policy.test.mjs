@@ -127,6 +127,8 @@ test('unauthorized access decisions are blocked', () => {
 test('firestore rules enforce the farm access controls', () => {
   assert.match(rules, /memberDocId == memberId\(request\.resource\.data\.farmId, request\.resource\.data\.userId\)/)
   assert.match(rules, /!exists\(\/databases\/\$\(database\)\/documents\/farmMembers\/\$\(memberId\(farmId, requesterId\)\)\)/)
+  assert.match(rules, /'requesterName'/)
+  assert.match(rules, /get\(\/databases\/\$\(database\)\/documents\/users\/\$\(requesterId\)\)\.data\.name == request\.resource\.data\.requesterName/)
   assert.match(rules, /existsAfter\(\/databases\/\$\(database\)\/documents\/farmJoinCodes\/\$\(request\.resource\.data\.joinCode\)\)/)
   assert.match(rules, /allow delete: if signedIn\(\) &&\s*resource\.data\.farmId is string &&\s*get\(\/databases\/\$\(database\)\/documents\/farms\/\$\(resource\.data\.farmId\)\)\.data\.ownerId == request\.auth\.uid;/)
   assert.match(rules, /request\.resource\.data\.status in \['approved', 'denied'\]/)
