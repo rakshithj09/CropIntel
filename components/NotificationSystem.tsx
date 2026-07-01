@@ -24,6 +24,7 @@ const NOTIFICATION_TIME_FORMAT: Intl.DateTimeFormatOptions = {
   hour: 'numeric',
   minute: '2-digit',
 }
+const ALERT_RADIUS_MILES = 150
 
 const SEVERITY_META = {
   high: {
@@ -74,9 +75,6 @@ export default function NotificationSystem({
     }
   }, [isOpen])
 
-  /** Demo persona when no farm is registered — must match `findAffectedFarmers` ids */
-  const DEMO_FARMER_ID = 'farmer-1'
-
   // Recompute when registration changes (useState initializer only runs once)
   const farmers = useMemo<FarmerLocation[]>(() => [
     // Arkansas area farmers
@@ -87,34 +85,34 @@ export default function NotificationSystem({
       lat: 35.5, // Near Russellville, AR (~20 miles)
       lng: -93.2,
       crops: ['corn', 'wheat', 'soybean'],
-      radius: 250,
+      radius: ALERT_RADIUS_MILES,
     },
     {
       id: 'farmer-2',
       name: 'Sarah Johnson',
       email: 'sarah@example.com',
-      lat: 35.1, // Within 250 miles of Russellville (~30 miles)
+      lat: 35.1, // Near Russellville, AR (~30 miles)
       lng: -92.8,
       crops: ['corn', 'rice'],
-      radius: 250,
+      radius: ALERT_RADIUS_MILES,
     },
     {
       id: 'farmer-3',
       name: 'Mike Davis',
       email: 'mike@example.com',
-      lat: 36.0, // Within 250 miles of Russellville (~50 miles)
+      lat: 36.0, // Near Russellville, AR (~50 miles)
       lng: -93.5,
       crops: ['corn', 'wheat', 'soybean'],
-      radius: 250,
+      radius: ALERT_RADIUS_MILES,
     },
     {
       id: 'farmer-4',
       name: 'Arkansas Farm Co.',
       email: 'info@arkfarm.com',
-      lat: 34.7, // Little Rock area - within 250 miles (~80 miles)
+      lat: 34.7, // Little Rock area (~80 miles)
       lng: -92.3,
       crops: ['corn', 'soybean'],
-      radius: 250,
+      radius: ALERT_RADIUS_MILES,
     },
     // California farmers
     {
@@ -124,7 +122,7 @@ export default function NotificationSystem({
       lat: 36.5, // Near Fresno, CA
       lng: -119.5,
       crops: ['wheat', 'corn'],
-      radius: 250,
+      radius: ALERT_RADIUS_MILES,
     },
     {
       id: 'farmer-6',
@@ -133,7 +131,7 @@ export default function NotificationSystem({
       lat: 37.0, // Near Modesto, CA
       lng: -120.5,
       crops: ['wheat', 'corn', 'soybean'],
-      radius: 250,
+      radius: ALERT_RADIUS_MILES,
     },
     // Texas farmers
     {
@@ -143,7 +141,7 @@ export default function NotificationSystem({
       lat: 32.0, // Near Abilene, TX
       lng: -99.5,
       crops: ['corn', 'wheat'],
-      radius: 250,
+      radius: ALERT_RADIUS_MILES,
     },
     {
       id: 'farmer-8',
@@ -152,7 +150,7 @@ export default function NotificationSystem({
       lat: 31.5, // Near San Angelo, TX
       lng: -100.0,
       crops: ['corn', 'soybean'],
-      radius: 250,
+      radius: ALERT_RADIUS_MILES,
     },
     // Iowa farmers
     {
@@ -162,7 +160,7 @@ export default function NotificationSystem({
       lat: 41.5, // Near Des Moines, IA
       lng: -93.0,
       crops: ['corn', 'soybean'],
-      radius: 250,
+      radius: ALERT_RADIUS_MILES,
     },
     {
       id: 'farmer-10',
@@ -171,7 +169,7 @@ export default function NotificationSystem({
       lat: 42.0, // Near Cedar Rapids, IA
       lng: -91.5,
       crops: ['corn', 'soybean', 'wheat'],
-      radius: 250,
+      radius: ALERT_RADIUS_MILES,
     },
     // Illinois farmers
     {
@@ -181,7 +179,7 @@ export default function NotificationSystem({
       lat: 40.0, // Near Champaign, IL
       lng: -88.5,
       crops: ['corn', 'soybean'],
-      radius: 250,
+      radius: ALERT_RADIUS_MILES,
     },
     // Kansas farmers
     {
@@ -191,7 +189,7 @@ export default function NotificationSystem({
       lat: 38.5, // Near Wichita, KS
       lng: -98.0,
       crops: ['wheat', 'corn'],
-      radius: 250,
+      radius: ALERT_RADIUS_MILES,
     },
     {
       id: 'farmer-13',
@@ -200,7 +198,7 @@ export default function NotificationSystem({
       lat: 39.0, // Near Topeka, KS
       lng: -95.5,
       crops: ['wheat', 'corn', 'soybean'],
-      radius: 250,
+      radius: ALERT_RADIUS_MILES,
     },
     // Nebraska farmers
     {
@@ -210,7 +208,7 @@ export default function NotificationSystem({
       lat: 41.0, // Near Lincoln, NE
       lng: -96.5,
       crops: ['corn', 'soybean'],
-      radius: 250,
+      radius: ALERT_RADIUS_MILES,
     },
     // North Carolina farmers
     {
@@ -220,7 +218,7 @@ export default function NotificationSystem({
       lat: 35.5, // Near Charlotte, NC
       lng: -80.5,
       crops: ['corn', 'soybean'],
-      radius: 250,
+      radius: ALERT_RADIUS_MILES,
     },
     // Ohio farmers
     {
@@ -230,7 +228,7 @@ export default function NotificationSystem({
       lat: 40.0, // Near Columbus, OH
       lng: -83.0,
       crops: ['corn', 'soybean', 'wheat'],
-      radius: 250,
+      radius: ALERT_RADIUS_MILES,
     },
     // Add current user if location is available
     ...(currentFarmerLocation
@@ -241,7 +239,7 @@ export default function NotificationSystem({
             lat: currentFarmerLocation.lat,
             lng: currentFarmerLocation.lng,
             crops: currentFarmerLocation.crops,
-            radius: 250,
+            radius: ALERT_RADIUS_MILES,
           } as FarmerLocation,
         ]
       : []),
@@ -259,12 +257,12 @@ export default function NotificationSystem({
   })
 
   useEffect(() => {
-    if (outbreaks.length === 0) {
+    if (outbreaks.length === 0 || !currentFarmerLocation) {
       setNotifications([])
       return
     }
 
-    const targetFarmerId = currentFarmerLocation ? 'current-user' : DEMO_FARMER_ID
+    const targetFarmerId = 'current-user'
 
     setNotifications((prev) => {
       const readByOutbreak = new Map<string, boolean>()
@@ -476,7 +474,7 @@ export default function NotificationSystem({
               {notifications.length > 0 && (
                 <div className="shrink-0 border-t border-slate-100 bg-slate-50 px-4 py-3">
                   <p className="text-xs leading-relaxed text-slate-500">
-                    Showing alerts within 250 miles. Dismissed alerts stay hidden until refresh.
+                    Showing alerts within 150 miles of the selected farm. Dismissed alerts stay hidden until refresh.
                   </p>
                 </div>
               )}

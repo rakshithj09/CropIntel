@@ -5,10 +5,9 @@ import dynamic from 'next/dynamic'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, Loader2, Camera, ArrowLeftRight } from 'lucide-react'
+import { ArrowRight, Loader2, Camera, ArrowLeftRight, ChevronDown } from 'lucide-react'
 import ImageUpload from '@/components/ImageUpload'
 import CropSelector from '@/components/CropSelector'
-import FarmSelector from '@/components/FarmSelector'
 import PredictionResults from '@/components/PredictionResults'
 import PredictionHistory, { savePredictionToHistory, type PredictionRecord } from '@/components/PredictionHistory'
 import ExportResults from '@/components/ExportResults'
@@ -16,7 +15,7 @@ import Diagnosis from '@/components/Diagnosis'
 import NotificationSystem from '@/components/NotificationSystem'
 import HealthComparisonPanel from '@/components/HealthComparisonPanel'
 import AccountMenu from '@/components/AccountMenu'
-import type { OutbreakReport, ReportStatus } from '@/lib/outbreakReport'
+import type { OutbreakReport } from '@/lib/outbreakReport'
 import {
   applyRegionalPrior,
   getRelevantDiseasesForCropState,
@@ -27,11 +26,12 @@ import { subscribeToAuth } from '@/src/lib/auth'
 import { getUserFarms, saveDiagnosis } from '@/src/lib/farms'
 import {
   createCropTroubleReport,
+  deleteCropTroubleReport,
   flagCropTroubleReport,
   getNearbyCropTroubleReports,
   markSeeingToo,
-  updateCropTroubleReportStatus,
   type CreateCropTroubleReportInput,
+  type CropTroubleReportReason,
 } from '@/src/lib/cropTroubleReports'
 import type { Farm } from '@/src/lib/types'
 import type { User } from 'firebase/auth'
@@ -211,9 +211,7 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
             return
           }
           setFarms(userFarms)
-          setSelectedFarmId((current) =>
-            userFarms.some((farm) => farm.id === current) ? current : activeView === 'outbreaks' ? userFarms[0].id : ''
-          )
+          setSelectedFarmId((current) => (userFarms.some((farm) => farm.id === current) ? current : userFarms[0].id))
         } catch (err: unknown) {
           setStartupError(getErrorMessage(err, 'Could not load your farm data.'))
         } finally {
@@ -226,7 +224,7 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
         setFarmsLoading(false)
       }
     )
-  }, [activeView, router])
+  }, [router])
 
   const applyRegionalFilter = useCallback(
     (raw: PredictionPayload) =>
@@ -399,16 +397,21 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
     await loadNearbyReports()
   }
 
-  const handleFlagReport = async (reportId: string) => {
+  const handleFlagReport = async (reportId: string, reason: CropTroubleReportReason, summary: string) => {
     if (!user) {
       router.replace('/login')
       return
     }
-    await flagCropTroubleReport(reportId, user.uid)
+    await flagCropTroubleReport(reportId, user.uid, reason, summary)
+    await loadNearbyReports()
   }
 
-  const handleReportStatusUpdate = async (reportId: string, status: Exclude<ReportStatus, 'new'>) => {
-    await updateCropTroubleReportStatus(reportId, status)
+  const handleDeleteReport = async (reportId: string) => {
+    if (!user) {
+      router.replace('/login')
+      return
+    }
+    await deleteCropTroubleReport(reportId, user.uid)
     await loadNearbyReports()
   }
 
@@ -493,6 +496,29 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
             </div>
 
             <div className="flex shrink-0 items-center justify-end gap-1.5 sm:gap-2">
+              <div className="relative">
+                <label htmlFor="global-farm-selector" className="sr-only">
+                  Farm
+                </label>
+                <select
+                  id="global-farm-selector"
+                  value={selectedFarmId}
+                  onChange={(event) => handleFarmChange(event.target.value)}
+                  disabled={farmsLoading || farms.length === 0}
+                  className="h-11 max-w-[9rem] appearance-none rounded-xl border border-ink/10 bg-white py-0 pl-3 pr-8 text-sm font-semibold leading-tight text-ink shadow-sm outline-none transition focus:border-primary-500 focus:ring-4 focus:ring-primary-200/60 sm:max-w-[13rem]"
+                >
+                  {farms.length === 0 ? (
+                    <option value="">Farm</option>
+                  ) : (
+                    farms.map((farm) => (
+                      <option key={farm.id} value={farm.id}>
+                        {farm.name} ({farm.stateCode})
+                      </option>
+                    ))
+                  )}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-field-soil" />
+              </div>
               <AccountMenu user={user} />
               <div className="relative z-50">
                 <NotificationSystem outbreaks={outbreakReports} currentFarmerLocation={farmLocation || undefined} />
@@ -564,13 +590,7 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
                 </div>
 
                 <div className="mt-5 space-y-5">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FarmSelector
-                      farms={farms}
-                      selectedFarmId={selectedFarmId}
-                      onFarmChange={handleFarmChange}
-                      loading={farmsLoading}
-                    />
+                  <div className="max-w-md">
                     <CropSelector crops={availableCrops} selectedCrop={selectedCrop} onCropChange={handleCropChange} />
                   </div>
 
@@ -645,28 +665,6 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
                 Tap a field area to report what you are seeing and help nearby farms spot risk earlier.
               </p>
             </div>
-            <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="Choose farm for local risk">
-              {farms.map((farm) => {
-                const active = farm.id === selectedFarmId
-                return (
-                  <button
-                    key={farm.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={active}
-                    onClick={() => handleFarmChange(farm.id)}
-                    className={`touch-manipulation min-h-[42px] rounded-full border px-4 py-2 text-sm font-semibold transition-all ${
-                      active
-                        ? 'border-ink bg-ink text-white shadow-sm'
-                        : 'border-ink/10 bg-surface/70 text-ink hover:border-leaf/30 hover:bg-white'
-                    }`}
-                  >
-                    {farm.name}
-                    <span className={active ? 'ml-2 text-white/75' : 'ml-2 text-field-soil'}>{farm.stateCode}</span>
-                  </button>
-                )
-              })}
-            </div>
             <div className="-mx-1 rounded-xl border border-field-soil/10 bg-field-cream p-2 sm:mx-0 sm:p-4">
               <USOutbreakMap
                 reports={outbreakReports}
@@ -677,7 +675,7 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
                 onReportSubmit={handleOutbreakReport}
                 onSeeingToo={handleSeeingToo}
                 onReportPost={handleFlagReport}
-                onStatusUpdate={handleReportStatusUpdate}
+                onDeleteReport={handleDeleteReport}
               />
             </div>
           </section>

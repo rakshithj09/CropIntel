@@ -20,7 +20,7 @@ export interface FarmerLocation {
   lat: number
   lng: number
   crops: string[] // Crops they're interested in
-  radius: number // Alert radius in miles (default 250)
+  radius: number // Alert radius in miles
 }
 
 export interface Notification {

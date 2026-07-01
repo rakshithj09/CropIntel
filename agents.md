@@ -4,6 +4,16 @@ This file defines non-negotiable engineering rules for any agent working in the 
 
 If a requested change conflicts with this file, stop and explain the conflict. Do not weaken security, privacy, access control, or data handling to make a feature work faster.
 
+## 0. Mandatory preflight
+
+Before doing any repository task, the agent must:
+
+1. Read this `AGENTS.md` file from disk.
+2. Treat these instructions as binding for the entire task.
+3. If any user request conflicts with this file, stop and explain the conflict.
+4. Do not rely only on prior memory or conversation context. Reread this file at the start of each new task.
+5. Include confirmation in the final report that `AGENTS.md` was checked.
+
 ## 1. Core operating rules
 
 - Read the existing code before changing it.
@@ -319,6 +329,9 @@ Never do any of the following:
 At the end of each task, provide this report:
 
 ```text
+AGENTS.md:
+- Read before work: [Yes/No]
+
 Changed:
 - [file]: [what changed]
 

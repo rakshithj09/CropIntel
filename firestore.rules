@@ -48,6 +48,17 @@ service cloud.firestore {
       return severity in ['low', 'medium', 'high'];
     }
 
+    function validModerationReason(reason) {
+      return reason in [
+        'false_or_misleading',
+        'unsafe_advice',
+        'spam_or_duplicate',
+        'private_information',
+        'harassment_or_abuse',
+        'other'
+      ];
+    }
+
     function validCropTroubleLocation(location) {
       return location is map &&
         location.keys().hasOnly(['lat', 'lng', 'stateCode', 'generalArea', 'precision']) &&
@@ -332,17 +343,14 @@ service cloud.firestore {
       allow create: if signedIn() && validCropTroubleCreate();
       allow update: if signedIn() && (
         (
-          resource.data.userId == request.auth.uid &&
-          request.resource.data.diff(resource.data).changedKeys().hasOnly(['status']) &&
-          request.resource.data.status in ['confirmed', 'resolved']
-        ) ||
-        (
+          resource.data.userId != request.auth.uid &&
           request.resource.data.diff(resource.data).changedKeys().hasOnly(['seeingTooCount']) &&
           request.resource.data.seeingTooCount == resource.data.seeingTooCount + 1 &&
           !exists(/databases/$(database)/documents/cropTroubleReports/$(reportId)/seeingToo/$(request.auth.uid)) &&
           getAfter(/databases/$(database)/documents/cropTroubleReports/$(reportId)/seeingToo/$(request.auth.uid)).data.userId == request.auth.uid
         ) ||
         (
+          resource.data.userId != request.auth.uid &&
           request.resource.data.diff(resource.data).changedKeys().hasOnly(['moderationCount']) &&
           request.resource.data.moderationCount == resource.data.moderationCount + 1 &&
           !exists(/databases/$(database)/documents/cropTroubleReports/$(reportId)/moderationReports/$(request.auth.uid)) &&
@@ -354,6 +362,7 @@ service cloud.firestore {
       match /seeingToo/{userId} {
         allow read: if signedIn();
         allow create: if isOwner(userId) &&
+          get(/databases/$(database)/documents/cropTroubleReports/$(reportId)).data.userId != request.auth.uid &&
           request.resource.data.keys().hasOnly(['userId', 'createdAt']) &&
           request.resource.data.userId == request.auth.uid &&
           request.resource.data.createdAt == request.time;
@@ -363,9 +372,11 @@ service cloud.firestore {
       match /moderationReports/{userId} {
         allow read: if signedIn() && userId == request.auth.uid;
         allow create: if isOwner(userId) &&
-          request.resource.data.keys().hasOnly(['userId', 'reason', 'createdAt']) &&
+          get(/databases/$(database)/documents/cropTroubleReports/$(reportId)).data.userId != request.auth.uid &&
+          request.resource.data.keys().hasOnly(['userId', 'reason', 'summary', 'createdAt']) &&
           request.resource.data.userId == request.auth.uid &&
-          isString(request.resource.data.reason, 1, 80) &&
+          validModerationReason(request.resource.data.reason) &&
+          isString(request.resource.data.summary, 0, 280) &&
           request.resource.data.createdAt == request.time;
         allow update, delete: if false;
       }

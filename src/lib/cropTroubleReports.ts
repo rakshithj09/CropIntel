@@ -2,6 +2,7 @@
 
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -10,7 +11,6 @@ import {
   runTransaction,
   serverTimestamp,
   Timestamp,
-  updateDoc,
   where,
 } from 'firebase/firestore'
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage'
@@ -26,6 +26,15 @@ import type { CropTroubleReport, ReportStatus } from '@/lib/outbreakReport'
 const REPORT_COOLDOWN_MS = 10 * 60 * 1000
 const MAX_SHARED_PHOTO_SIZE = 5 * 1024 * 1024
 const SHARED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const
+export const CROP_TROUBLE_REPORT_REASONS = [
+  'false_or_misleading',
+  'unsafe_advice',
+  'spam_or_duplicate',
+  'private_information',
+  'harassment_or_abuse',
+  'other',
+] as const
+export type CropTroubleReportReason = (typeof CROP_TROUBLE_REPORT_REASONS)[number]
 
 const createReportSchema = z.object({
   userId: z.string().min(1),
@@ -210,6 +219,9 @@ export async function markSeeingToo(reportId: string, userId: string) {
 
     const reportSnapshot = await transaction.get(reportRef)
     if (!reportSnapshot.exists()) throw new Error('That report is no longer available.')
+    if (reportSnapshot.data().userId === userId) {
+      throw new Error('You cannot count your own alert.')
+    }
 
     const currentCount = reportSnapshot.data().seeingTooCount
     transaction.set(seeingRef, { userId, createdAt: serverTimestamp() })
@@ -220,10 +232,16 @@ export async function markSeeingToo(reportId: string, userId: string) {
   })
 }
 
-export async function flagCropTroubleReport(reportId: string, userId: string, reason = 'bad_or_false') {
+export async function flagCropTroubleReport(
+  reportId: string,
+  userId: string,
+  reason: CropTroubleReportReason,
+  summary: string
+) {
   const db = getFirebaseDb()
   const reportRef = doc(db, 'cropTroubleReports', reportId)
   const moderationRef = doc(db, 'cropTroubleReports', reportId, 'moderationReports', userId)
+  const normalizedSummary = summary.trim().slice(0, 280)
 
   return runTransaction(db, async (transaction) => {
     const existing = await transaction.get(moderationRef)
@@ -231,9 +249,12 @@ export async function flagCropTroubleReport(reportId: string, userId: string, re
 
     const reportSnapshot = await transaction.get(reportRef)
     if (!reportSnapshot.exists()) throw new Error('That report is no longer available.')
+    if (reportSnapshot.data().userId === userId) {
+      throw new Error('You cannot report your own alert.')
+    }
 
     const currentCount = reportSnapshot.data().moderationCount
-    transaction.set(moderationRef, { userId, reason, createdAt: serverTimestamp() })
+    transaction.set(moderationRef, { userId, reason, summary: normalizedSummary, createdAt: serverTimestamp() })
     transaction.update(reportRef, {
       moderationCount: (typeof currentCount === 'number' ? currentCount : 0) + 1,
     })
@@ -241,6 +262,22 @@ export async function flagCropTroubleReport(reportId: string, userId: string, re
   })
 }
 
-export async function updateCropTroubleReportStatus(reportId: string, status: Exclude<ReportStatus, 'new'>) {
-  await updateDoc(doc(getFirebaseDb(), 'cropTroubleReports', reportId), { status })
+export async function deleteCropTroubleReport(reportId: string, userId: string) {
+  const db = getFirebaseDb()
+  const storage = getFirebaseStorage()
+  const reportRef = doc(db, 'cropTroubleReports', reportId)
+  const reportSnapshot = await getDoc(reportRef)
+
+  if (!reportSnapshot.exists()) throw new Error('That report is no longer available.')
+
+  const report = reportSnapshot.data()
+  if (report.userId !== userId) {
+    throw new Error('Only the person who made this alert can delete it.')
+  }
+
+  await deleteDoc(reportRef)
+
+  if (typeof report.photoPath === 'string' && report.photoPath) {
+    await deleteObject(ref(storage, report.photoPath)).catch(() => undefined)
+  }
 }
