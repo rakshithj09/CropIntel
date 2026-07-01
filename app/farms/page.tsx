@@ -37,6 +37,7 @@ export default function FarmsPage() {
   const [ownerRequests, setOwnerRequests] = useState<FarmAccessRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [confirmingLeaveFarmId, setConfirmingLeaveFarmId] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [scrolled, setScrolled] = useState(false)
@@ -81,7 +82,7 @@ export default function FarmsPage() {
   }, [])
 
   const runFarmAction = async (key: string, action: () => Promise<string>) => {
-    if (!user) return
+    if (!user) return false
     setActionLoading(key)
     setError(null)
     setMessage(null)
@@ -89,8 +90,10 @@ export default function FarmsPage() {
       const nextMessage = await action()
       await loadFarmData(user.uid)
       setMessage(nextMessage)
+      return true
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Could not complete that action.'))
+      return false
     } finally {
       setActionLoading(null)
     }
@@ -327,20 +330,45 @@ export default function FarmsPage() {
                         Search listing
                       </button>
                     </>
+                  ) : confirmingLeaveFarmId === farm.id ? (
+                    <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 sm:col-span-2">
+                      <p className="text-sm font-bold text-rose-950">Leave {farm.name}?</p>
+                      <p className="mt-1 text-sm text-rose-900">You will lose access to this farm unless an owner adds you again.</p>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          disabled={actionLoading === `leave-${farm.id}`}
+                          onClick={() => setConfirmingLeaveFarmId(null)}
+                          className="btn-secondary justify-center px-4 py-2 text-sm"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          disabled={!membership || actionLoading === `leave-${farm.id}`}
+                          onClick={async () => {
+                            if (!user || !membership) return
+                            const succeeded = await runFarmAction(`leave-${farm.id}`, async () => {
+                              await leaveFarm(user.uid, membership)
+                              return `You left ${farm.name}.`
+                            })
+                            if (succeeded) setConfirmingLeaveFarmId(null)
+                          }}
+                          className="btn-primary justify-center px-4 py-2 text-sm"
+                        >
+                          {actionLoading === `leave-${farm.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+                          Leave
+                        </button>
+                      </div>
+                    </div>
                   ) : (
                     <button
                       type="button"
                       disabled={!membership || actionLoading === `leave-${farm.id}`}
-                      onClick={() => {
-                        if (!user || !membership || !window.confirm(`Leave ${farm.name}?`)) return
-                        runFarmAction(`leave-${farm.id}`, async () => {
-                          await leaveFarm(user.uid, membership)
-                          return `You left ${farm.name}.`
-                        })
-                      }}
+                      onClick={() => setConfirmingLeaveFarmId(farm.id)}
                       className="btn-secondary justify-center px-4 py-2 text-sm sm:col-span-2"
                     >
-                      {actionLoading === `leave-${farm.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+                      <LogOut className="h-4 w-4" />
                       Leave farm
                     </button>
                   )}
