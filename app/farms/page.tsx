@@ -197,10 +197,7 @@ export default function FarmsPage() {
               <h2 className="text-xl font-extrabold text-primary-900">Pending access requests</h2>
               <button
                 type="button"
-                onClick={() => user && runFarmAction('refresh-requests', async () => {
-                  await loadFarmData(user.uid)
-                  return 'Requests refreshed.'
-                })}
+                onClick={() => user && runFarmAction('refresh-requests', async () => 'Requests refreshed.')}
                 className="btn-secondary px-3 py-2 text-sm"
               >
                 <RefreshCw className="h-4 w-4" />
