@@ -2,8 +2,8 @@
 # Tomato field-generalization fix (2026-06-11): PlantDoc field photos folded
 # into training (upweighted x8) for the high-volume classes; disjoint holdout
 # at ml/field_test/tomato_holdout. Retrain -> holdout eval -> gated promote.
-cd /Users/homeportal/CropIntel
-PY=/Users/homeportal/CropIntel/.conda-py311/bin/python
+cd "$(dirname "$0")/../.." || exit 1
+PY="${PY:-python}"
 
 echo "=== TOMATO FIX start $(date)"
 

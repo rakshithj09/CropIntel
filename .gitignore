@@ -60,3 +60,6 @@ nohup.out
 
 # TS incremental build cache
 tsconfig.tsbuildinfo
+
+# Claude Code local (per-machine) settings
+.claude/settings.local.json

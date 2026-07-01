@@ -3,8 +3,8 @@
 # Rice train + external eval already completed (see overnight_queue.log).
 # Tomato crashed mid-fine-tune (no resume support -> retrain from scratch),
 # wheat never started. One at a time — 8 GB RAM machine.
-cd /Users/homeportal/CropIntel
-PY=/Users/homeportal/CropIntel/.conda-py311/bin/python
+cd "$(dirname "$0")/../.." || exit 1
+PY="${PY:-python}"
 
 echo "=== RESUME QUEUE start $(date)"
 
