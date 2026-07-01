@@ -230,6 +230,15 @@ export const joinCodeSchema = z.string()
   .transform((value) => value.trim().toUpperCase())
   .pipe(z.string().regex(/^[A-Z2-9]{6}$/, 'Enter the six-character farm join code.'))
 
+export const farmSearchSchema = z.object({
+  search: trimmedString(2, 80, 'Farm name or location'),
+  stateCode: usStateCodeSchema,
+}).strict()
+
+export const farmIdSchema = trimmedString(8, 128, 'Farm ID')
+
+export const accessRequestStatusSchema = z.enum(['pending', 'approved', 'denied', 'expired'])
+
 export function validateImageSignature(bytes: Uint8Array, mimeType: string): boolean {
   if (mimeType === 'image/jpeg') {
     return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff

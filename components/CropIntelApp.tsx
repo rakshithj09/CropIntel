@@ -11,14 +11,13 @@ import CropSelector from '@/components/CropSelector'
 import FarmSelector from '@/components/FarmSelector'
 import PredictionResults from '@/components/PredictionResults'
 import CropMismatchBlock from '@/components/CropMismatchBlock'
-import PredictionHistory, { type PredictionRecord } from '@/components/PredictionHistory'
+import PredictionHistory, { savePredictionToHistory, type PredictionRecord } from '@/components/PredictionHistory'
 import ExportResults from '@/components/ExportResults'
 import Diagnosis from '@/components/Diagnosis'
 import NotificationSystem from '@/components/NotificationSystem'
 import HealthComparisonPanel from '@/components/HealthComparisonPanel'
 import AccountMenu from '@/components/AccountMenu'
-import { savePredictionToHistory } from '@/components/PredictionHistory'
-import type { OutbreakReport } from '@/lib/outbreakReport'
+import type { OutbreakReport, ReportStatus } from '@/lib/outbreakReport'
 import {
   applyRegionalPrior,
   getRelevantDiseasesForCropState,
@@ -27,6 +26,14 @@ import {
 } from '@/lib/stateDiseaseMap'
 import { subscribeToAuth } from '@/src/lib/auth'
 import { getUserFarms, saveDiagnosis } from '@/src/lib/farms'
+import {
+  createCropTroubleReport,
+  flagCropTroubleReport,
+  getNearbyCropTroubleReports,
+  markSeeingToo,
+  updateCropTroubleReportStatus,
+  type CreateCropTroubleReportInput,
+} from '@/src/lib/cropTroubleReports'
 import type { Farm } from '@/src/lib/types'
 import type { User } from 'firebase/auth'
 
@@ -162,140 +169,11 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
   const [startupError, setStartupError] = useState<string | null>(null)
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [activeView] = useState<MainView>(initialView)
-  // Initialize with a sample outbreak in Russellville, Arkansas
-  const [outbreakReports, setOutbreakReports] = useState<OutbreakReport[]>([
-    {
-      id: 'russellville-outbreak-1',
-      lat: 35.2784,
-      lng: -93.1338,
-      crop: 'corn',
-      disease: 'Common Rust',
-      severity: 'high',
-      date: new Date().toISOString(),
-      description: 'Severe rust outbreak detected in corn fields. Multiple farms affected in the area.',
-    },
-    {
-      id: 'high-severity-130-miles',
-      lat: 33.6234, // Exactly 130 miles south of farmer-1 (35.5, -93.2)
-      lng: -93.2,
-      crop: 'corn',
-      disease: 'Southern Corn Leaf Blight',
-      severity: 'high',
-      date: new Date().toISOString(),
-      description: 'CRITICAL: Severe southern corn leaf blight outbreak detected. Immediate action required. Multiple farms at risk within 150-mile radius.',
-    },
-    {
-      id: 'california-outbreak-1',
-      lat: 36.7783,
-      lng: -119.4179,
-      crop: 'wheat',
-      disease: 'Leaf Rust',
-      severity: 'high',
-      date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-      description: 'Widespread leaf rust detected in wheat fields across Central Valley.',
-    },
-    {
-      id: 'texas-outbreak-1',
-      lat: 31.9686,
-      lng: -99.9018,
-      crop: 'corn',
-      disease: 'Gray Leaf Spot',
-      severity: 'medium',
-      date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-      description: 'Gray leaf spot spreading in corn crops. Farmers advised to monitor closely.',
-    },
-    {
-      id: 'iowa-outbreak-1',
-      lat: 41.8780,
-      lng: -93.0977,
-      crop: 'soybean',
-      disease: 'Powdery Mildew',
-      severity: 'medium',
-      date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-      description: 'Powdery mildew detected in soybean fields. Early treatment recommended.',
-    },
-    {
-      id: 'illinois-outbreak-1',
-      lat: 40.3495,
-      lng: -88.9861,
-      crop: 'corn',
-      disease: 'Common Rust',
-      severity: 'low',
-      date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-      description: 'Minor rust outbreak in isolated corn fields. Monitoring in progress.',
-    },
-    {
-      id: 'kansas-outbreak-1',
-      lat: 38.5729,
-      lng: -98.3833,
-      crop: 'wheat',
-      disease: 'Stripe Rust',
-      severity: 'high',
-      date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
-      description: 'Severe stripe rust outbreak affecting wheat crops. Immediate action required.',
-    },
-    {
-      id: 'nebraska-outbreak-1',
-      lat: 41.4925,
-      lng: -99.9018,
-      crop: 'corn',
-      disease: 'Northern Corn Leaf Blight',
-      severity: 'medium',
-      date: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
-      description: 'Northern corn leaf blight detected. Fungicide application recommended.',
-    },
-    {
-      id: 'minnesota-outbreak-1',
-      lat: 46.7296,
-      lng: -94.6859,
-      crop: 'soybean',
-      disease: 'Bacterial Blight',
-      severity: 'low',
-      date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-      description: 'Bacterial blight found in soybean fields. Isolated cases reported.',
-    },
-    {
-      id: 'north-carolina-outbreak-1',
-      lat: 35.2271,
-      lng: -80.8431,
-      crop: 'corn',
-      disease: 'Southern Corn Leaf Blight',
-      severity: 'high',
-      date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-      description: 'Severe southern corn leaf blight outbreak. Multiple counties affected.',
-    },
-    {
-      id: 'missouri-outbreak-1',
-      lat: 38.5729,
-      lng: -92.1893,
-      crop: 'soybean',
-      disease: 'Sudden Death Syndrome',
-      severity: 'medium',
-      date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
-      description: 'Sudden death syndrome detected in soybean crops. Root health monitoring advised.',
-    },
-    {
-      id: 'indiana-outbreak-1',
-      lat: 39.7684,
-      lng: -86.1581,
-      crop: 'corn',
-      disease: 'Common Rust',
-      severity: 'low',
-      date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-      description: 'Minor rust spots detected. Early stage monitoring.',
-    },
-    {
-      id: 'ohio-outbreak-1',
-      lat: 40.3888,
-      lng: -82.7649,
-      crop: 'corn',
-      disease: 'Gray Leaf Spot',
-      severity: 'medium',
-      date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-      description: 'Gray leaf spot spreading in corn fields. Weather conditions favorable for spread.',
-    },
-  ])
+  const [outbreakReports, setOutbreakReports] = useState<OutbreakReport[]>([])
+  const [outbreaksLoading, setOutbreaksLoading] = useState(false)
+  const [outbreaksError, setOutbreaksError] = useState<string | null>(null)
   const selectedFarm = farms.find((farm) => farm.id === selectedFarmId) ?? null
+  const selectedFarmStateCode = selectedFarm?.stateCode ?? ''
   const availableCrops = useMemo(() => selectedFarm?.crops ?? [], [selectedFarm])
   const hasSelectedCrop = selectedFarm !== null && availableCrops.includes(selectedCrop)
   const farmLocation =
@@ -339,7 +217,9 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
             return
           }
           setFarms(userFarms)
-          setSelectedFarmId((current) => (userFarms.some((farm) => farm.id === current) ? current : ''))
+          setSelectedFarmId((current) =>
+            userFarms.some((farm) => farm.id === current) ? current : activeView === 'outbreaks' ? userFarms[0].id : ''
+          )
         } catch (err: unknown) {
           setStartupError(getErrorMessage(err, 'Could not load your farm data.'))
         } finally {
@@ -352,7 +232,7 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
         setFarmsLoading(false)
       }
     )
-  }, [router])
+  }, [activeView, router])
 
   const applyRegionalFilter = useCallback(
     (raw: PredictionPayload) =>
@@ -506,8 +386,61 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
     // In a real app, you might want to store more data in history
   }
 
-  const handleOutbreakReport = (report: OutbreakReport) => {
-    setOutbreakReports([...outbreakReports, report])
+  const loadNearbyReports = useCallback(async () => {
+    if (!selectedFarmStateCode) {
+      setOutbreakReports([])
+      return
+    }
+
+    setOutbreaksLoading(true)
+    setOutbreaksError(null)
+    try {
+      setOutbreakReports(await getNearbyCropTroubleReports(selectedFarmStateCode))
+    } catch {
+      setOutbreaksError('Could not load nearby reports right now.')
+    } finally {
+      setOutbreaksLoading(false)
+    }
+  }, [selectedFarmStateCode])
+
+  useEffect(() => {
+    if (activeView !== 'outbreaks') return
+    void loadNearbyReports()
+  }, [activeView, loadNearbyReports])
+
+  const handleOutbreakReport = async (input: Omit<CreateCropTroubleReportInput, 'userId' | 'farmId'>) => {
+    if (!user) {
+      router.replace('/login')
+      return
+    }
+    await createCropTroubleReport({
+      ...input,
+      userId: user.uid,
+      farmId: selectedFarm?.id ?? null,
+    })
+    await loadNearbyReports()
+  }
+
+  const handleSeeingToo = async (reportId: string) => {
+    if (!user) {
+      router.replace('/login')
+      return
+    }
+    await markSeeingToo(reportId, user.uid)
+    await loadNearbyReports()
+  }
+
+  const handleFlagReport = async (reportId: string) => {
+    if (!user) {
+      router.replace('/login')
+      return
+    }
+    await flagCropTroubleReport(reportId, user.uid)
+  }
+
+  const handleReportStatusUpdate = async (reportId: string, status: Exclude<ReportStatus, 'new'>) => {
+    await updateCropTroubleReportStatus(reportId, status)
+    await loadNearbyReports()
   }
 
   if (authLoading || farmsLoading) {
@@ -758,21 +691,43 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
                 Tap a field area to report what you are seeing and help nearby farms spot risk earlier.
               </p>
             </div>
+            <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="Choose farm for local risk">
+              {farms.map((farm) => {
+                const active = farm.id === selectedFarmId
+                return (
+                  <button
+                    key={farm.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => handleFarmChange(farm.id)}
+                    className={`touch-manipulation min-h-[42px] rounded-full border px-4 py-2 text-sm font-semibold transition-all ${
+                      active
+                        ? 'border-ink bg-ink text-white shadow-sm'
+                        : 'border-ink/10 bg-surface/70 text-ink hover:border-leaf/30 hover:bg-white'
+                    }`}
+                  >
+                    {farm.name}
+                    <span className={active ? 'ml-2 text-white/75' : 'ml-2 text-field-soil'}>{farm.stateCode}</span>
+                  </button>
+                )
+              })}
+            </div>
             <div className="-mx-1 rounded-xl border border-field-soil/10 bg-field-cream p-2 sm:mx-0 sm:p-4">
               <USOutbreakMap
                 reports={outbreakReports}
+                currentUserId={user?.uid ?? ''}
+                selectedFarm={selectedFarm}
+                loadingReports={outbreaksLoading}
+                reportsError={outbreaksError}
                 onReportSubmit={handleOutbreakReport}
+                onSeeingToo={handleSeeingToo}
+                onReportPost={handleFlagReport}
+                onStatusUpdate={handleReportStatusUpdate}
               />
             </div>
           </section>
         )}
-
-        <footer className="mt-10 mb-6 border-t border-field-soil/10 pt-5 text-center text-field-soil">
-          <p className="cropintel-footer-pill mb-5 inline-flex items-center gap-2 rounded-full border border-ink/10 bg-surface/60 px-3 py-1 font-mono text-xs uppercase tracking-widest text-ink-soft">
-            <span className="h-1.5 w-1.5 rounded-full bg-leaf" />
-            Models: EfficientNet / TensorFlow Lite
-          </p>
-        </footer>
       </div>
     </main>
   )

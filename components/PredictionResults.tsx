@@ -51,7 +51,6 @@ export default function PredictionResults({
   const headlineDisease = topPrediction?.disease ?? prediction.disease
   const headlineConfidence = topPrediction?.confidence ?? prediction.confidence
   const otherPredictions = sortedPredictions.slice(1)
-
   const getStatusColor = () => {
     if (prediction.not_in_catalog) {
       return 'bg-amber-50 text-amber-800 border-amber-200'
@@ -170,8 +169,7 @@ export default function PredictionResults({
           </h3>
           <div className="space-y-3">
             {otherPredictions.map((pred, index) => {
-              const pctRaw = toConfidencePercent(pred.confidence)
-              const pctClamped = Math.min(100, Math.max(0, pctRaw))
+              const pctClamped = toConfidencePercent(pred.confidence)
               const pctOneDecimal = pctClamped.toFixed(1)
               return (
                 <div
