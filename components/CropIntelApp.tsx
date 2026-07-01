@@ -660,8 +660,6 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
             </div>
           </section>
         )}
-
-        <footer className="mt-10 mb-6 border-t border-field-soil/10 pt-5 text-center text-field-soil" />
       </div>
     </main>
   )
