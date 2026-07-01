@@ -289,7 +289,7 @@ export async function requestFarmAccess(userId: string, farm: FarmSearchResult) 
       farmId: farm.farmId,
       requesterId: userId,
       requesterName: requesterName.trim(),
-      requesterEmail: requesterEmail.trim().toLowerCase(),
+      requesterEmail: requesterEmail.trim(),
       ownerId: farm.ownerId,
       status: 'pending',
       farmName: farm.name,
