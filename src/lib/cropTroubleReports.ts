@@ -12,6 +12,7 @@ import {
   serverTimestamp,
   Timestamp,
   where,
+  writeBatch,
 } from 'firebase/firestore'
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage'
 import { z } from 'zod'
@@ -262,6 +263,30 @@ export async function flagCropTroubleReport(
   })
 }
 
+async function deleteSubcollectionDocs(reportRef: ReturnType<typeof doc>, subcollection: 'seeingToo' | 'moderationReports') {
+  const db = getFirebaseDb()
+  const snapshot = await getDocs(collection(reportRef, subcollection))
+  if (snapshot.empty) return
+
+  let batch = writeBatch(db)
+  let ops = 0
+
+  for (const childDoc of snapshot.docs) {
+    batch.delete(childDoc.ref)
+    ops += 1
+
+    if (ops === 450) {
+      await batch.commit()
+      batch = writeBatch(db)
+      ops = 0
+    }
+  }
+
+  if (ops > 0) {
+    await batch.commit()
+  }
+}
+
 export async function deleteCropTroubleReport(reportId: string, userId: string) {
   const db = getFirebaseDb()
   const storage = getFirebaseStorage()
@@ -275,6 +300,8 @@ export async function deleteCropTroubleReport(reportId: string, userId: string) 
     throw new Error('Only the person who made this alert can delete it.')
   }
 
+  await deleteSubcollectionDocs(reportRef, 'seeingToo')
+  await deleteSubcollectionDocs(reportRef, 'moderationReports')
   await deleteDoc(reportRef)
 
   if (typeof report.photoPath === 'string' && report.photoPath) {

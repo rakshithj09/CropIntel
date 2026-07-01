@@ -139,5 +139,6 @@ test('firestore rules enforce the farm access controls', () => {
   assert.match(rules, /validModerationReason\(request\.resource\.data\.reason\)/)
   assert.match(rules, /request\.resource\.data\.keys\(\)\.hasOnly\(\['userId', 'reason', 'summary', 'createdAt'\]\)/)
   assert.match(rules, /resource\.data\.userId != request\.auth\.uid/)
+  assert.match(rules, /allow delete: if signedIn\(\) &&\s*get\(\/databases\/\$\(database\)\/documents\/cropTroubleReports\/\$\(reportId\)\)\.data\.userId == request\.auth\.uid;/)
   assert.doesNotMatch(rules, /request\.resource\.data\.status in \['confirmed', 'resolved'\]/)
 })
