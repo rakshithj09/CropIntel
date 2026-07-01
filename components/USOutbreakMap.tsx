@@ -51,7 +51,6 @@ type ReportFormData = {
   issueType: string
   severity: ReportSeverity
   description: string
-  generalArea: string
   sharePhoto: boolean
   photoFile: File | null
 }
@@ -61,7 +60,6 @@ const initialFormData: ReportFormData = {
   issueType: '',
   severity: 'medium',
   description: '',
-  generalArea: '',
   sharePhoto: false,
   photoFile: null,
 }
@@ -281,15 +279,14 @@ export default function USOutbreakMap({
   }, [])
 
   const handleMapClick = (lat: number, lng: number) => {
-    if (!currentUserId) return
+    if (!currentUserId || !selectedFarm || !stateCode) return
     const clampedLat = Math.max(24.39, Math.min(49.38, lat))
     const clampedLng = Math.max(-125, Math.min(-66.93, lng))
 
     setSelectedLocation({ lat: clampedLat, lng: clampedLng })
     setFormData({
       ...initialFormData,
-      crop: selectedFarm?.crops[0] ?? '',
-      generalArea: stateCode ? `${stateCode}` : '',
+      crop: selectedFarm.crops[0] ?? '',
     })
     setFormMessage(null)
     setShowReportForm(true)
@@ -297,8 +294,8 @@ export default function USOutbreakMap({
 
   const handleSubmitReport = async () => {
     if (!onReportSubmit || !selectedLocation || !stateCode) return
-    if (!formData.crop || !formData.issueType || !formData.generalArea.trim()) {
-      setFormMessage({ type: 'error', text: 'Add the crop, trouble, and general area.' })
+    if (!formData.crop || !formData.issueType) {
+      setFormMessage({ type: 'error', text: 'Add the crop and trouble reported.' })
       return
     }
     if (formData.description.length > 700) {
@@ -322,7 +319,7 @@ export default function USOutbreakMap({
           lat: roundApprox(selectedLocation.lat),
           lng: roundApprox(selectedLocation.lng),
           stateCode: stateCode as CreateCropTroubleReportInput['location']['stateCode'],
-          generalArea: formData.generalArea.trim(),
+          generalArea: stateCode,
           precision: 'approximate',
         },
         photoShared: formData.sharePhoto && Boolean(formData.photoFile),
@@ -648,17 +645,6 @@ export default function USOutbreakMap({
                   </select>
                   <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-field-soil" />
                 </div>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-bold text-primary-900">General area</label>
-                <input
-                  type="text"
-                  value={formData.generalArea}
-                  onChange={(e) => setFormData({ ...formData, generalArea: e.target.value.slice(0, 120) })}
-                  placeholder="Washington County, AR"
-                  className="field-input py-2.5"
-                />
               </div>
 
               <div>

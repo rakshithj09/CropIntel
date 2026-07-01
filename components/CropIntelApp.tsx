@@ -645,6 +645,28 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
                 Tap a field area to report what you are seeing and help nearby farms spot risk earlier.
               </p>
             </div>
+            <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="Choose farm for local risk">
+              {farms.map((farm) => {
+                const active = farm.id === selectedFarmId
+                return (
+                  <button
+                    key={farm.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => handleFarmChange(farm.id)}
+                    className={`touch-manipulation min-h-[42px] rounded-full border px-4 py-2 text-sm font-semibold transition-all ${
+                      active
+                        ? 'border-ink bg-ink text-white shadow-sm'
+                        : 'border-ink/10 bg-surface/70 text-ink hover:border-leaf/30 hover:bg-white'
+                    }`}
+                  >
+                    {farm.name}
+                    <span className={active ? 'ml-2 text-white/75' : 'ml-2 text-field-soil'}>{farm.stateCode}</span>
+                  </button>
+                )
+              })}
+            </div>
             <div className="-mx-1 rounded-xl border border-field-soil/10 bg-field-cream p-2 sm:mx-0 sm:p-4">
               <USOutbreakMap
                 reports={outbreakReports}
