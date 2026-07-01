@@ -517,9 +517,12 @@ export default function USOutbreakMap({
                   </dl>
 
                   {report.description && (
-                    <p className="mt-3 rounded-lg bg-white/70 p-3 text-sm leading-6 text-ink-soft">
-                      {report.description}
-                    </p>
+                    <div className="mt-3">
+                      <p className="mb-2 text-sm font-bold text-primary-900">Notes</p>
+                      <p className="rounded-lg bg-white/70 p-3 text-sm leading-6 text-ink-soft">
+                        {report.description}
+                      </p>
+                    </div>
                   )}
 
                   {isOwner ? (
