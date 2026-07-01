@@ -8,11 +8,11 @@ If a requested change conflicts with this file, stop and explain the conflict. D
 
 Before doing any repository task, the agent must:
 
-1. Read this `AGENTS.md` file from disk.
+1. Read this `agents.md` file from disk.
 2. Treat these instructions as binding for the entire task.
 3. If any user request conflicts with this file, stop and explain the conflict.
 4. Do not rely only on prior memory or conversation context. Reread this file at the start of each new task.
-5. Include confirmation in the final report that `AGENTS.md` was checked.
+5. Include confirmation in the final report that `agents.md` was checked.
 
 ## 1. Core operating rules
 
