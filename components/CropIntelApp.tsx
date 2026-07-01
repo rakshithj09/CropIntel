@@ -9,6 +9,7 @@ import { ArrowRight, Loader2, Camera, ArrowLeftRight, ChevronDown } from 'lucide
 import ImageUpload from '@/components/ImageUpload'
 import CropSelector from '@/components/CropSelector'
 import PredictionResults from '@/components/PredictionResults'
+import CropMismatchBlock from '@/components/CropMismatchBlock'
 import PredictionHistory, { savePredictionToHistory, type PredictionRecord } from '@/components/PredictionHistory'
 import ExportResults from '@/components/ExportResults'
 import Diagnosis from '@/components/Diagnosis'
@@ -158,6 +159,11 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
   const [selectedCrop, setSelectedCrop] = useState('')
   const [photoMode, setPhotoMode] = useState<'single' | 'compare'>('single')
   const [prediction, setPrediction] = useState<PredictionPayload | null>(null)
+  // Set when the wrong-crop gate blocks the submission (a different crop fits).
+  const [cropMismatch, setCropMismatch] = useState<{
+    suggested_crop: string | null
+    suggested_confidence: number | null
+  } | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [startupError, setStartupError] = useState<string | null>(null)
@@ -241,16 +247,18 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
     setSelectedFarmId(farmId)
     setSelectedCrop('')
     setPrediction(null)
+    setCropMismatch(null)
     setError(null)
   }
 
   const handleCropChange = (crop: string) => {
     setSelectedCrop(crop)
     setPrediction(null)
+    setCropMismatch(null)
     setError(null)
   }
 
-  const handlePredict = async () => {
+  const handlePredict = async (cropOverride?: string, skipGate?: boolean) => {
     if (!user) {
       router.replace('/login')
       return
@@ -261,7 +269,10 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
       return
     }
 
-    if (!hasSelectedCrop) {
+    // When re-running under a suggested crop, switch the selection too so the
+    // rest of the UI stays consistent.
+    const cropToUse = cropOverride ?? selectedCrop
+    if (!cropToUse || (!cropOverride && !hasSelectedCrop)) {
       setError(`Select a crop grown on ${selectedFarm.name} before running disease detection.`)
       return
     }
@@ -271,14 +282,21 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
       return
     }
 
+    if (cropOverride && cropOverride !== selectedCrop) {
+      setSelectedCrop(cropOverride)
+    }
+
     setLoading(true)
     setError(null)
     setPrediction(null)
+    setCropMismatch(null)
 
     try {
       const formData = new FormData()
       formData.append('image', selectedImage)
-      formData.append('crop', selectedCrop)
+      formData.append('crop', cropToUse)
+      // User insisted the crop is right after a wrong-crop block.
+      if (skipGate) formData.append('skip_crop_check', 'true')
       const idToken = await user.getIdToken()
 
       const response = await fetch('/api/predict', {
@@ -293,8 +311,20 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
         throw new Error(await getPredictionErrorMessage(response))
       }
 
-      const rawPayload = parsePredictionResponse(await response.json())
-      const filtered = applyRegionalFilter(rawPayload)
+      const data = await response.json()
+
+      // Wrong-crop gate: a different crop fits clearly better. Show a block
+      // instead of a misleading diagnosis, and don't record it to history.
+      if (data?.crop_mismatch) {
+        setCropMismatch({
+          suggested_crop: data.suggested_crop ?? null,
+          suggested_confidence: data.suggested_confidence ?? null,
+        })
+        return
+      }
+
+      const rawPayload = parsePredictionResponse(data)
+      const filtered = applyRegionalPrior(rawPayload, cropToUse, selectedFarm.stateCode)
       const merged = normalizePredictionPayload({ ...rawPayload, ...filtered })
       setPrediction(merged)
 
@@ -304,13 +334,13 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
           typeof merged.confidence === 'number' && merged.confidence <= 1
             ? merged.confidence * 100
             : merged.confidence
-        savePredictionToHistory(selectedCrop, merged.disease, confidencePercent, imageUrl, selectedFarm, merged)
+        savePredictionToHistory(cropToUse, merged.disease, confidencePercent, imageUrl, selectedFarm, merged)
       }
 
       await saveDiagnosis({
         userId: user.uid,
         farmId: selectedFarm.id,
-        crop: selectedCrop,
+        crop: cropToUse,
         disease: merged.disease,
         confidence:
           typeof merged.confidence === 'number' && merged.confidence <= 1
@@ -327,6 +357,7 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
   const handleClear = () => {
     setSelectedImage(null)
     setPrediction(null)
+    setCropMismatch(null)
     setError(null)
     setImageUrl(null)
   }
@@ -605,7 +636,7 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
                       <div className="flex items-end">
                         <button
                           type="button"
-                          onClick={handlePredict}
+                          onClick={() => handlePredict()}
                           disabled={!selectedImage || !hasSelectedCrop || loading}
                           className="btn-primary w-full"
                         >
@@ -633,7 +664,22 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
                     </div>
                   )}
 
-                  {photoMode === 'single' && prediction && (
+                  {photoMode === 'single' && cropMismatch && (
+                    <CropMismatchBlock
+                      selectedCrop={selectedCrop}
+                      suggestedCrop={cropMismatch.suggested_crop}
+                      suggestedConfidence={cropMismatch.suggested_confidence}
+                      onUseSuggested={
+                        cropMismatch.suggested_crop
+                          ? () => handlePredict(cropMismatch.suggested_crop!)
+                          : undefined
+                      }
+                      onOverride={() => handlePredict(undefined, true)}
+                      onRetake={handleClear}
+                    />
+                  )}
+
+                  {photoMode === 'single' && prediction && !cropMismatch && (
                     <>
                       <PredictionResults prediction={prediction} regionNote={regionNote} />
                       <Diagnosis
