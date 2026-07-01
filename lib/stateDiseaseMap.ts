@@ -48,10 +48,10 @@ export const CROP_STATE_DISEASES: Record<string, Record<string, string[]>> = {
   },
   // Names must match the soybean model's class_names exactly (Bacterial Pustule,
   // Frogeye Leaf Spot, Rust, Sudden Death Syndrome, Target Leaf Spot, Yellow
-  // Mosaic, Healthy) — this list FILTERS predictions, so a name the model never
-  // emits (the old 'powdery_mildew') both matches nothing and silently drops
-  // valid diagnoses. Soybean rust is a southern-belt disease, so it's only
-  // listed for southern states.
+  // Mosaic, Healthy). This list is used by applyRegionalPrior as a *soft* regional
+  // prior (common vs. uncommon): if a name doesn't match what the model emits,
+  // it won't receive the 'common' boost for that region. Soybean rust is a
+  // southern-belt disease, so it's only listed for southern states.
   soybean: {
     IA: ['Frogeye Leaf Spot', 'Sudden Death Syndrome', 'Bacterial Pustule', 'Target Leaf Spot', 'Yellow Mosaic', 'Healthy'],
     IL: ['Frogeye Leaf Spot', 'Sudden Death Syndrome', 'Bacterial Pustule', 'Target Leaf Spot', 'Yellow Mosaic', 'Healthy'],
