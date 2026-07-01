@@ -116,7 +116,8 @@ async function assertValidSharedPhoto(file: File) {
 export async function createCropTroubleReport(input: CreateCropTroubleReportInput) {
   const db = getFirebaseDb()
   const storage = getFirebaseStorage()
-  const validated = createReportSchema.parse(input)
+  const { photoFile, ...reportInput } = input
+  const validated = createReportSchema.parse(reportInput)
   const rateLimitRef = doc(db, 'reportRateLimits', validated.userId)
   const rateSnapshot = await getDoc(rateLimitRef)
   const lastReportAt = rateSnapshot.exists() ? rateSnapshot.data().lastReportAt : null
@@ -130,12 +131,12 @@ export async function createCropTroubleReport(input: CreateCropTroubleReportInpu
   let photoPath: string | null = null
 
   try {
-    if (validated.photoShared && input.photoFile) {
-      await assertValidSharedPhoto(input.photoFile)
+    if (validated.photoShared && photoFile) {
+      await assertValidSharedPhoto(photoFile)
       photoPath = `cropTroubleReports/${reportRef.id}/shared-photo`
       const photoRef = ref(storage, photoPath)
-      await uploadBytes(photoRef, input.photoFile, {
-        contentType: input.photoFile.type,
+      await uploadBytes(photoRef, photoFile, {
+        contentType: photoFile.type,
         customMetadata: {
           ownerId: validated.userId,
           reportId: reportRef.id,

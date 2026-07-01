@@ -211,7 +211,9 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
             return
           }
           setFarms(userFarms)
-          setSelectedFarmId((current) => (userFarms.some((farm) => farm.id === current) ? current : ''))
+          setSelectedFarmId((current) =>
+            userFarms.some((farm) => farm.id === current) ? current : activeView === 'outbreaks' ? userFarms[0].id : ''
+          )
         } catch (err: unknown) {
           setStartupError(getErrorMessage(err, 'Could not load your farm data.'))
         } finally {
@@ -224,7 +226,7 @@ export default function CropIntelApp({ initialView = 'diagnose' }: { initialView
         setFarmsLoading(false)
       }
     )
-  }, [router])
+  }, [activeView, router])
 
   const applyRegionalFilter = useCallback(
     (raw: PredictionPayload) =>

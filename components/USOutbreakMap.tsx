@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   Camera,
   CheckCircle2,
+  ChevronDown,
   Flag,
   Loader2,
   MapPin,
@@ -148,6 +149,7 @@ function roundApprox(value: number) {
 
 function friendlyError(error: unknown) {
   if (error instanceof Error && error.message) {
+    if (error.message.trim().startsWith('[')) return 'Could not save that report. Check the details and try again.'
     if (error.message.includes('wait')) return error.message
     if (error.message.includes('photo') || error.message.includes('JPEG')) return error.message
   }
@@ -604,18 +606,21 @@ export default function USOutbreakMap({
 
               <div>
                 <label className="mb-2 block text-sm font-bold text-primary-900">Crop</label>
-                <select
-                  value={formData.crop}
-                  onChange={(e) => setFormData({ ...formData, crop: e.target.value })}
-                  className="field-input py-2.5"
-                >
-                  <option value="">Choose crop</option>
-                  {(selectedFarm?.crops ?? []).map((crop) => (
-                    <option key={crop} value={crop}>
-                      {crop}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    value={formData.crop}
+                    onChange={(e) => setFormData({ ...formData, crop: e.target.value })}
+                    className="field-input h-12 appearance-none py-0 pl-4 pr-11 leading-tight"
+                  >
+                    <option value="">Choose crop</option>
+                    {(selectedFarm?.crops ?? []).map((crop) => (
+                      <option key={crop} value={crop}>
+                        {crop}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-field-soil" />
+                </div>
               </div>
 
               <div>
@@ -631,15 +636,18 @@ export default function USOutbreakMap({
 
               <div>
                 <label className="mb-2 block text-sm font-bold text-primary-900">Severity</label>
-                <select
-                  value={formData.severity}
-                  onChange={(e) => setFormData({ ...formData, severity: e.target.value as ReportSeverity })}
-                  className="field-input py-2.5"
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                </select>
+                <div className="relative">
+                  <select
+                    value={formData.severity}
+                    onChange={(e) => setFormData({ ...formData, severity: e.target.value as ReportSeverity })}
+                    className="field-input h-12 appearance-none py-0 pl-4 pr-11 leading-tight"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-field-soil" />
+                </div>
               </div>
 
               <div>
